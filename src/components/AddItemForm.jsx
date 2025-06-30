@@ -3,11 +3,12 @@
 import { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
-function AddItemForm({items, setItems, editItem = null, onClose}) {
+function AddItemForm({ items, updateItem, editItem = null, onClose }) {
   const isEdit = !!editItem;
 
   const [type, setType] = useState(editItem?.type || 'habit');
-  const [id] = useState(editItem?.id || uuidv4()); // ID is fixed for editing
+  const [formId, setFormId] = useState(editItem?.id || uuidv4());
+
   const [name, setName] = useState(editItem?.name || '');
   const [unit, setUnit] = useState(editItem?.unit || '');
   const [dailyGoal, setDailyGoal] = useState(editItem?.dailyGoal || '');
@@ -16,28 +17,25 @@ function AddItemForm({items, setItems, editItem = null, onClose}) {
   const [levelEnabled, setLevelEnabled] = useState(editItem?.levelEnabled || false);
   const [levelThreshold, setLevelThreshold] = useState(editItem?.levelThreshold || '');
   const [levelMultiplier, setLevelMultiplier] = useState(editItem?.levelMultiplier || '');
-  const [mainLevels, setMainLevels] = useState(
-    editItem?.mainLevels?.join(', ') || ''
-  );
+  const [mainLevels, setMainLevels] = useState(editItem?.mainLevels?.join(', ') || '');
   const [children, setChildren] = useState(editItem?.children || []);
   const [targetCount, setTargetCount] = useState(editItem?.targetCount || 1);
   const [levelStrategy, setLevelStrategy] = useState(editItem?.levelStrategy || 'max');
 
   const [parentGroup, setParentGroup] = useState(() => {
-  if (!editItem || editItem.type !== 'habit') return '';
-  const foundGroup = Object.values(items).find(
-      g => g.type === 'group' && g.children?.includes(editItem.id)
+    if (!editItem || editItem.type !== 'habit') return '';
+    const foundGroup = Object.values(items).find(
+      (g) => g.type === 'group' && g.children?.includes(editItem.id)
     );
     return foundGroup?.id || '';
   });
 
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     const newItem = {
-      ...(editItem || {}), 
-      id,
+      ...(editItem || {}),
+      id: formId,
       type,
       name,
       levelEnabled
@@ -58,7 +56,10 @@ function AddItemForm({items, setItems, editItem = null, onClose}) {
       if (levelEnabled) {
         newItem.levelThreshold = Number(levelThreshold);
         newItem.levelMultiplier = Number(levelMultiplier);
-        newItem.mainLevels = mainLevels.split(',').map(l => l.trim()).filter(Boolean);
+        newItem.mainLevels = mainLevels
+          .split(',')
+          .map((l) => l.trim())
+          .filter(Boolean);
       }
     } else if (type === 'group') {
       newItem.children = children;
@@ -68,41 +69,12 @@ function AddItemForm({items, setItems, editItem = null, onClose}) {
       }
     }
 
-    setItems(prev => {
-      const updated = {
-        ...prev,
-        [id]: newItem
-      };
-
-      // Step 1: Remove this habit from all groups
-      Object.values(updated).forEach(item => {
-        if (item.type === 'group') {
-          item.children = item.children?.filter(childId => childId !== id);
-        }
-      });
-
-      // Step 2: Add this habit to the selected group
-      if (type === 'habit' && parentGroup && updated[parentGroup]) {
-        const group = updated[parentGroup];
-        group.children = [...(group.children || []), id];
-      }
-
-      // Step 3: For editing case, update parent references if needed
-      if (isEdit && editItem.name !== name) {
-        Object.values(updated).forEach(item => {
-          if (item.type === 'group') {
-            item.children = item.children.map(childId =>
-              childId === editItem.id ? id : childId
-            );
-          }
-        });
-      }
-      return updated;
-    });
-
-
-
+    await updateItem(newItem);
+    onClose?.();
     // reset
+    if (!isEdit) {
+      setFormId(uuidv4()); // 🟢 Reset for next new item
+    }
     setName('');
     setUnit('');
     setDailyGoal('');
@@ -120,7 +92,11 @@ function AddItemForm({items, setItems, editItem = null, onClose}) {
       <h3>Add New {type === 'habit' ? 'Habit' : 'Group'}</h3>
       <label>
         Type:
-        <select value={type} onChange={(e) => setType(e.target.value)} style={{ marginLeft: '10px' }}>
+        <select
+          value={type}
+          onChange={(e) => setType(e.target.value)}
+          style={{ marginLeft: '10px' }}
+        >
           <option value="habit">Habit</option>
           <option value="group">Group</option>
         </select>
@@ -128,27 +104,48 @@ function AddItemForm({items, setItems, editItem = null, onClose}) {
       <br />
       <label>
         Name:
-        <input value={name} onChange={e => setName(e.target.value)} required />
+        <input value={name} onChange={(e) => setName(e.target.value)} required />
       </label>
       <br />
       {type === 'habit' && (
         <>
-          <label>Unit: <input value={unit} required onChange={e => setUnit(e.target.value)} /></label><br />
-          <label>Daily Goal: <input type="number" value={dailyGoal} onChange={e => setDailyGoal(Number(e.target.value))} /></label><br />
-          <label>Start Date: <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} /></label><br />
-          <label>End Date: <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} /></label><br />
+          <label>
+            Unit: <input value={unit} required onChange={(e) => setUnit(e.target.value)} />
+          </label>
+          <br />
+          <label>
+            Daily Goal:{' '}
+            <input
+              type="number"
+              value={dailyGoal}
+              onChange={(e) => setDailyGoal(Number(e.target.value))}
+            />
+          </label>
+          <br />
+          <label>
+            Start Date:{' '}
+            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+          </label>
+          <br />
+          <label>
+            End Date:{' '}
+            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+          </label>
+          <br />
           <label>
             Group:
             <select
               value={parentGroup}
-              onChange={e => setParentGroup(e.target.value)}
+              onChange={(e) => setParentGroup(e.target.value)}
               style={{ marginLeft: '10px' }}
             >
               <option value="">(No group)</option>
               {Object.values(items)
-                .filter(i => i.type === 'group')
-                .map(group => (
-                  <option key={group.id} value={group.id}>{group.name}</option>
+                .filter((i) => i.type === 'group')
+                .map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {group.name}
+                  </option>
                 ))}
             </select>
           </label>
@@ -165,13 +162,13 @@ function AddItemForm({items, setItems, editItem = null, onClose}) {
               style={{ width: '100%', marginTop: '5px' }}
               value={children}
               onChange={(e) => {
-                const selected = Array.from(e.target.selectedOptions, option => option.value);
+                const selected = Array.from(e.target.selectedOptions, (option) => option.value);
                 setChildren(selected);
               }}
             >
               {Object.values(items)
-                .filter(i => i.id !== name) // Prevent self-referencing
-                .map(item => (
+                .filter((i) => i.id !== name) // Prevent self-referencing
+                .map((item) => (
                   <option key={item.id} value={item.id}>
                     {item.name} ({item.type})
                   </option>
@@ -180,53 +177,69 @@ function AddItemForm({items, setItems, editItem = null, onClose}) {
           </label>
           <br />
 
-          <label>Target Count: <input type="number" value={targetCount} onChange={e => setTargetCount(e.target.value)} /></label><br />
+          <label>
+            Target Count:{' '}
+            <input
+              type="number"
+              value={targetCount}
+              onChange={(e) => setTargetCount(e.target.value)}
+            />
+          </label>
+          <br />
         </>
       )}
       <label>
         Level Enabled:
-        <input 
-        type="checkbox" 
-        checked={levelEnabled} 
-        onChange={e => setLevelEnabled(e.target.checked)} 
+        <input
+          type="checkbox"
+          checked={levelEnabled}
+          onChange={(e) => setLevelEnabled(e.target.checked)}
         />
-      </label><br />
+      </label>
+      <br />
       {levelEnabled && type === 'habit' && (
         <>
           <label>
-            Level Threshold: 
+            Level Threshold:
             <input
-            type="number"
-            value={levelThreshold}
-            placeholder="e.g., 100"
-            onChange={e => setLevelThreshold(e.target.value)}
+              type="number"
+              value={levelThreshold}
+              placeholder="e.g., 100"
+              onChange={(e) => setLevelThreshold(e.target.value)}
             />
-          </label><br />
+          </label>
+          <br />
           <label>
-            Level Multiplier: 
+            Level Multiplier:
             <input
               type="number"
               value={levelMultiplier}
               placeholder="e.g., 3 for x3 per level"
-              onChange={e => setLevelMultiplier(e.target.value)}
+              onChange={(e) => setLevelMultiplier(e.target.value)}
             />
-          </label><br />
-          <label>Main Levels (comma-separated): <input value={mainLevels} onChange={e => setMainLevels(e.target.value)} /></label><br />
+          </label>
+          <br />
+          <label>
+            Main Levels (comma-separated):{' '}
+            <input value={mainLevels} onChange={(e) => setMainLevels(e.target.value)} />
+          </label>
+          <br />
         </>
       )}
       {levelEnabled && type === 'group' && (
         <>
-          <label>Level Strategy:
-            <select value={levelStrategy} onChange={e => setLevelStrategy(e.target.value)}>
+          <label>
+            Level Strategy:
+            <select value={levelStrategy} onChange={(e) => setLevelStrategy(e.target.value)}>
               <option value="max">Max</option>
               <option value="min">Min</option>
               <option value="avg">Average</option>
             </select>
-          </label><br />
+          </label>
+          <br />
         </>
       )}
       <button type="submit">{isEdit ? 'Save Changes' : 'Add'}</button>
-
     </form>
   );
 }
