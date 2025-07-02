@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react';
 import { evaluateCompletion } from '../components/evaluate';
+import { GoCheckCircle } from 'react-icons/go';
+import { RxCross2 } from 'react-icons/rx';
 
 export default function CalendarView({ items }) {
   const [weekOffset, setWeekOffset] = useState(0); // 0 = current week, -1 = prev week, +1 = next week
@@ -67,7 +69,11 @@ export default function CalendarView({ items }) {
                   const { completed } = evaluateCompletion(items, item.id, date);
                   return (
                     <td key={date} style={{ textAlign: 'center' }}>
-                      {completed ? '✅' : '❌'}
+                      {completed ? (
+                        <GoCheckCircle color="orange" size={20} />
+                      ) : (
+                        <RxCross2 color="red" size={20} />
+                      )}
                     </td>
                   );
                 })}
@@ -82,7 +88,11 @@ export default function CalendarView({ items }) {
                       const { completed } = evaluateCompletion(items, childId, date);
                       return (
                         <td key={date} style={{ textAlign: 'center' }}>
-                          {completed ? '✅' : '❌'}
+                          {completed ? (
+                            <GoCheckCircle color="orange" size={20} />
+                          ) : (
+                            <RxCross2 color="red" size={20} />
+                          )}
                         </td>
                       );
                     })}
