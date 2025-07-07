@@ -64,19 +64,21 @@ You can also sign in with Google or register with your own email/password.
 ## 📁 Folder Structure
 ```
 src/
-├── App.jsx # Main app logic
-├── App.css # Global styles
-├── firebase.js # Firebase config
-├── components/ # Reusable UI elements
-│ ├── AddItemForm.jsx
-│ ├── BottomBar.jsx
-│ ├── GroupTree.jsx
-│ ├── Login.jsx
-│ └── evaluate.js
-├── views/ # Main app views
-│ ├── MainView.jsx
-│ ├── CalendarView.jsx
-│ └── SettingsView.jsx
+├── App.css
+├── App.jsx
+├── components
+│   ├── AddItemForm.jsx
+│   ├── BottomBar.jsx
+│   ├── evaluate.js
+│   ├── GroupTree.jsx
+│   └── Login.jsx
+├── firebase.js
+├── main.jsx
+└── views
+    ├── CalendarView.jsx
+    ├── MainView.jsx
+    └── SettingsView.jsx
+
 ```
 
 ---
