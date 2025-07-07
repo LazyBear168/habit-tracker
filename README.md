@@ -8,8 +8,8 @@ Users can create daily habits, group them, track progress, and unlock levels —
 
 ## 🚀 Live Demo
 
-👉 [Open App on Firebase](https://your-deployed-app-link.web.app)  
-*(Replace with your actual Firebase deploy link)*
+👉 [Open App on Firebase]([https://your-deployed-app-link.web.app](https://sunny-habit-app.web.app/)  
+
 
 ---
 
