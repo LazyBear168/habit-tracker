@@ -1,4 +1,11 @@
-// src/components/Login.jsx
+// File: src/components/Login.jsx
+// Author: Cheng
+// Description:
+//   Handles user authentication using Firebase.
+//   Supports both email/password login and Google OAuth login via popup.
+//   If login fails with email/password, the component attempts auto signup.
+//   On successful authentication, invokes onLogin() with the authenticated user.
+
 import { useState } from 'react';
 import {
   signInWithEmailAndPassword,
@@ -37,6 +44,14 @@ export default function Login({ onLogin }) {
       }
     }
   };
+  const loginWithDemo = async (demoEmail, demoPass) => {
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, demoEmail, demoPass);
+      onLogin(userCredential.user);
+    } catch (err) {
+      alert('Demo login failed: ' + err.message);
+    }
+  };
 
   return (
     <div style={{ textAlign: 'center', marginTop: '50px' }}>
@@ -57,8 +72,20 @@ export default function Login({ onLogin }) {
       />
       <br />
       <br />
-      <button onClick={handleSignIn}>Login / Sign Up</button>
-      <button onClick={handleGoogleLogin}>Sign in with Google</button>
+      <div style={{ textAlign: 'center', padding: '20px' }}>
+        <button onClick={handleSignIn}>Login / Sign Up</button>
+        <br />
+        <br />
+        <button onClick={handleGoogleLogin}>Sign in with Google</button>
+        <br />
+        <br />
+        <button onClick={() => loginWithDemo('demo1@habit.com', 'demo123')}>
+          Log in as Demo User 1
+        </button>
+        <button onClick={() => loginWithDemo('demo2@habit.com', 'demo123')}>
+          Log in as Demo User 2
+        </button>
+      </div>
     </div>
   );
 }

@@ -1,4 +1,14 @@
-// src/components/BottomBar.jsx
+// File: src/components/BottomBar.jsx
+// Author: Cheng
+// Description:
+//   Fixed navigation bar at the bottom of the app.
+//   Provides three primary actions:
+//   - Switch to Main View or open Add Item form (➕)
+//   - Navigate to Calendar View (📅)
+//   - Open Settings View (⚙️)
+//   Dynamically determines whether to show the add form or switch views
+//   based on current state.
+
 export default function BottomBar({ view, setView, setShowForm }) {
   return (
     <div

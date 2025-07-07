@@ -1,3 +1,11 @@
+// File: src/views/CalendarView.jsx
+// Author: Cheng
+// Description:
+//   Displays a weekly calendar view of top-level and child habits.
+//   For each habit, it shows completion status per day using icons,
+//   based on evaluated habit data. Users can navigate between weeks.
+//   Designed to visualize daily progress and encourage consistency.
+
 import { useState, useMemo } from 'react';
 import { evaluateCompletion } from '../components/evaluate';
 import { GoCheckCircle } from 'react-icons/go';

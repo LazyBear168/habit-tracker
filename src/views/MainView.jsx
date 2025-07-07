@@ -1,4 +1,11 @@
-// src/views/MainView.jsx
+// File: src/views/MainView.jsx
+// Author: Cheng
+// Description:
+//   Main daily view for habit tracking. Displays a list of top-level habit groups,
+//   each rendered via the GroupTree component. Users can navigate between days
+//   using date controls, view or manage habit items, and perform CRUD operations.
+//   Designed to be the default user interface for daily habit interaction.
+
 import GroupTree from '../components/GroupTree';
 
 export default function MainView({

@@ -1,5 +1,13 @@
-
-//Filename: src/components/evaluate.js
+// File: src/components/evaluate.js
+// Author: Cheng
+// Description: 
+//   Provides logic to evaluate habit and group completion status for a given date.
+//   Supports three item types:
+//   - Simple habits (daily goal check)
+//   - Level-based habits (multi-tiered progress with thresholds)
+//   - Groups (aggregated completion based on child items)
+//   Returns a structured object with completion status and progress metadata 
+//   used in UI components like CalendarView and GroupTree.
 
 export function evaluateCompletion(items, id, selectedDate) {
   const item = items[id];

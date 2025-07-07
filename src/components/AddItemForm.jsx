@@ -1,4 +1,11 @@
-//Filename: src/components/AddItemForm.jsx
+// File: src/components/AddItemForm.jsx
+// Author: Cheng
+// Description:
+//   Reusable form component for creating or editing habits and groups.
+//   Supports both "habit" and "group" item types with dynamic fields based on type.
+//   Handles input for habit tracking details (e.g., unit, goal, dates),
+//   level configuration, and group hierarchy. On submit, the item is created or updated
+//   and synced to Firestore via the provided updateItem function.
 
 import { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';

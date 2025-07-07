@@ -1,4 +1,8 @@
-// Filename: src/App.jsx
+// File: src/App.jsx
+// Author: Cheng
+// Description:
+//    Main App component handling routing, Firebase auth, real-time Firestore sync,
+//    habit CRUD logic, and rendering views (Main, Calendar, Settings)
 
 import { useState, useEffect } from 'react';
 import { auth } from './firebase';
@@ -12,7 +16,6 @@ import CalendarView from './views/CalendarView';
 import SettingsView from './views/SettingsView';
 import BottomBar from './components/BottomBar';
 import AddItemForm from './components/AddItemForm';
-import initialItems from './data/initialItems';
 import { db } from './firebase';
 import { collection, getDocs, setDoc, doc, onSnapshot } from 'firebase/firestore';
 import { deleteDoc } from 'firebase/firestore';

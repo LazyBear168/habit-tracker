@@ -1,4 +1,15 @@
-//Filename: src/components/GroupTree.jsx
+// File: src/components/evaluate.js
+// Author: Cheng
+// Description:
+//   Recursive UI component for displaying and managing habits and habit groups.
+//   Supports three item types:
+//     - Simple habits with direct daily input
+//     - Level-enabled habits with progress bars and level calculation
+//     - Groups composed of child habits or subgroups
+//   Includes logic for dropdown actions (edit, delete, level upgrade/downgrade),
+//   nested rendering of child items, and progress input handling.
+//   Evaluates completion status via evaluateCompletion() for visual feedback and progress display.
+
 import { useEffect, useRef } from 'react';
 
 import { evaluateCompletion } from './evaluate';

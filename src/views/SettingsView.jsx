@@ -1,4 +1,11 @@
-// src/views/SettingsView.jsx
+// File: src/views/SettingsView.jsx
+// Author: Cheng
+// Description:
+//   Settings panel for data management and user logout.
+//   Allows users to export all habit data to a JSON file or
+//   import data from a previously saved JSON.
+//   Also includes a logout button to end the current session.
+
 import { useRef } from 'react';
 
 export default function SettingsView({ items, setItems, updateItem, onLogout }) {
