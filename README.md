@@ -1,4 +1,10 @@
-# 🌱 Habit Tracker
+
+🌱 Habit Tracker
+
+**Description**: Personal habit tracking app built with React + Vite + Firebase  
+**Website**: [https://sunny-habit-app.web.app/](https://sunny-habit-app.web.app/)  
+**Topics**: react, habit-tracker, firebase, productivity, vite
+
 
 A full-featured habit tracking app built with **React + Vite** and powered by **Firebase** for authentication and real-time cloud storage.
 
