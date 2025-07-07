@@ -15,7 +15,7 @@ Users can create daily habits, group them, track progress, and unlock levels —
 
 ## 🚀 Live Demo
 
-👉 [Open App on Firebase]([https://your-deployed-app-link.web.app](https://sunny-habit-app.web.app/)  
+👉 [Open App on Firebase][https://sunny-habit-app.web.app/](https://sunny-habit-app.web.app/)  
 ![App screenshot](public/demo-screenshot.png)
 
 
