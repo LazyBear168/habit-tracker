@@ -35,15 +35,22 @@ export default function Login({ onLogin }) {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       onLogin(userCredential.user);
     } catch (err) {
-      alert('Login failed, trying to sign up...');
-      try {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        onLogin(userCredential.user);
-      } catch (signupErr) {
-        alert('Signup failed: ' + signupErr.message);
+      if (err.code === 'auth/user-not-found') {
+        // 只有「帳號不存在」才自動註冊
+        try {
+          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+          onLogin(userCredential.user);
+        } catch (signupErr) {
+          alert('Signup failed: ' + signupErr.message);
+        }
+      } else if (err.code === 'auth/wrong-password') {
+        alert('Wrong password');
+      } else {
+        alert(err.message);
       }
     }
   };
+
   const loginWithDemo = async (demoEmail, demoPass) => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, demoEmail, demoPass);

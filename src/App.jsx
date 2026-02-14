@@ -31,7 +31,7 @@ function App() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [items, setItems] = useState({});
 
-  // Sets up an authentication state listener on mount; updates the user state when 
+  // Sets up an authentication state listener on mount; updates the user state when
   // the auth status changes. Cleans up the listener when the component unmounts.
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, setUser);
@@ -87,10 +87,13 @@ function App() {
       const updated = { ...prev };
       delete updated[idToDelete];
       for (const key in updated) {
-        if (updated[key].type === 'group') {
-          updated[key].children = updated[key].children?.filter(
-            (childId) => childId !== idToDelete
-          );
+        const item = updated[key];
+
+        if (item.type === 'group' && item.children) {
+          updated[key] = {
+            ...item, // ← 建立新 object（重要）
+            children: item.children.filter((childId) => childId !== idToDelete)
+          };
         }
       }
       return updated;
