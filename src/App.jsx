@@ -31,6 +31,8 @@ function App() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [items, setItems] = useState({});
 
+  // Sets up an authentication state listener on mount; updates the user state when 
+  // the auth status changes. Cleans up the listener when the component unmounts.
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, setUser);
     return () => unsubscribe();

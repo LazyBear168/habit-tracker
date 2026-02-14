@@ -49,6 +49,12 @@ You can also sign in with Google or register with your own email/password.
 - 🔐 **Firebase Auth** — sign in via Google or email/password
 - ☁️ **Real-Time Sync** — updates reflected instantly across devices
 
+### Future
+- 📱 become PWA（Download on phone）
+- 📊 Habit → statistics / charts
+- 🧠 Become AI habit coach
+= 🏃 Connect ios triathlon training system app
+
 ---
 
 ## 🧩 Tech Stack

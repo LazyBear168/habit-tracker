@@ -1,7 +1,0 @@
-src/
-├─ components/
-│  ├─ HabitList.jsx       # List of habits
-│  ├─ HabitItem.jsx       # Single habit item
-│  └─ AddHabitForm.jsx    # Form to add new habit
-├─ App.jsx                # Root component
-├─ main.jsx               # Entry point
