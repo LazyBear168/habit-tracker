@@ -103,7 +103,10 @@ function App() {
   return (
     <div className="app-container">
       <div className="app-header">
-        <h1>Habit Tracker</h1>
+        <h1>
+          Habit Tracker <span style={{ fontSize: "0.5em" }}>Happy new year 📆</span>
+        </h1>
+
       </div>
 
       <div className="app-main">

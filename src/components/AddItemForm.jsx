@@ -10,6 +10,20 @@
 import { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
+const UNIT_OPTIONS = [
+  "times",
+  "minutes",
+  "hours",
+  "km",
+  "m",
+  "steps",
+  "pages",
+  "kcal",
+  "cups",
+  "sets",
+  "reps",
+];
+
 function AddItemForm({ items, updateItem, editItem = null, onClose }) {
   const isEdit = !!editItem;
 
@@ -117,8 +131,22 @@ function AddItemForm({ items, updateItem, editItem = null, onClose }) {
       {type === 'habit' && (
         <>
           <label>
-            Unit: <input value={unit} required onChange={(e) => setUnit(e.target.value)} />
+            Unit:
+            <select
+              value={unit}
+              onChange={(e) => setUnit(e.target.value)}
+              required
+              style={{ marginLeft: "10px" }}
+            >
+              <option value="">(Select unit)</option>
+              {UNIT_OPTIONS.map((u) => (
+                <option key={u} value={u}>
+                  {u}
+                </option>
+              ))}
+            </select>
           </label>
+
           <br />
           <label>
             Daily Goal:{' '}

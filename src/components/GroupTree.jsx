@@ -1,4 +1,4 @@
-// File: src/components/evaluate.js
+// File: src/components/GroupTree.jsx
 // Author: Cheng
 // Description:
 //   Recursive UI component for displaying and managing habits and habit groups.
@@ -10,7 +10,7 @@
 //   nested rendering of child items, and progress input handling.
 //   Evaluates completion status via evaluateCompletion() for visual feedback and progress display.
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { evaluateCompletion } from './evaluate';
 
@@ -45,6 +45,16 @@ function GroupTree({
   const showDropdown = openDropdownId === item.id;
   const dropdownRef = useRef(null);
 
+    // --- Timer (for unit === 'minutes') ---
+  const [isTiming, setIsTiming] = useState(false);
+  const [elapsedSec, setElapsedSec] = useState(0);
+
+  const timerStartRef = useRef(null);   // timestamp (ms)
+  const timerIntervalRef = useRef(null);
+
+  const isMinuteUnit = isHabit && String(item.unit || '').toLowerCase() === 'minutes';
+
+
   const mainLevelName = isLevelHabit ? item.mainLevels?.[mainLevelIndex] || item.name : '';
 
   const renderDropdownMenu = () => (
@@ -69,91 +79,137 @@ function GroupTree({
         style={{ padding: '4px 0' }}
         onClick={() => {
           setEditItem(item);
-          setShowDropdown(false);
+          setOpenDropdownId(null);
         }}
       >
         ✏️ Edit
       </button>
 
-      {isLevelHabit && mainLevelIndex > 1 && (
-        <button
-          style={{ padding: '4px 0' }}
-          onClick={() => {
-            updateItem({
-              ...item,
-              currentMainLevel: mainLevelIndex + 1
-            });
-            setShowDropdown(false);
-          }}
-        >
-          ⬆️ Upgrade
-        </button>
-      )}
-      {isLevelHabit && mainLevelIndex > 1 && (
-        <button
-          style={{ padding: '4px 0' }}
-          onClick={() => {
-            updateItem({
-              ...item,
-              currentMainLevel: mainLevelIndex - 1
-            });
-            setShowDropdown(false);
-          }}
-        >
-          ⬇️ Downgrade
-        </button>
-      )}
-
+       
+    {isLevelHabit && mainLevelIndex > 0 && (
       <button
         style={{ padding: '4px 0' }}
         onClick={() => {
-          if (confirm(`Delete "${item.name}"?`)) {
-            deleteItem(item.id);
-          }
-          setShowDropdown(false);
+          updateItem({ ...item, currentMainLevel: mainLevelIndex - 1 });
+          setOpenDropdownId(null);
         }}
       >
-        🗑️ Delete
+        ⬇️ Downgrade
       </button>
-    </div>
-  );
+    )}
+
+    <button
+      style={{ padding: '4px 0' }}
+      onClick={() => {
+        if (confirm(`Delete "${item.name}"?`)) deleteItem(item.id);
+        setOpenDropdownId(null);
+      }}
+    >
+      🗑️ Delete
+    </button>
+  </div>
+);
+
+    const getTodayValue = () => {
+    return isLevelHabit
+      ? item.progressByMainLevel?.[mainLevelIndex]?.[selectedDate] ?? 0
+      : item.progressByDate?.[selectedDate] ?? 0;
+  };
+
+  const setTodayValue = (newVal) => {
+    if (isLevelHabit) {
+      updateItem({
+        ...item,
+        progressByMainLevel: {
+          ...item.progressByMainLevel,
+          [mainLevelIndex]: {
+            ...(item.progressByMainLevel?.[mainLevelIndex] || {}),
+            [selectedDate]: newVal
+          }
+        }
+      });
+    } else {
+      updateItem({
+        ...item,
+        progressByDate: {
+          ...item.progressByDate,
+          [selectedDate]: newVal
+        }
+      });
+    }
+  };
+
+  const stopTimerAndCommit = () => {
+  if (timerIntervalRef.current) {
+    clearInterval(timerIntervalRef.current);
+    timerIntervalRef.current = null;
+  }
+
+  const secondsToAdd = elapsedSec; // ⭐ 直接用秒
+
+  if (secondsToAdd > 0) {
+    const current = Number(getTodayValue()) || 0;
+    setTodayValue(current + secondsToAdd);
+  }
+
+  setElapsedSec(0);
+  timerStartRef.current = null;
+  setIsTiming(false);
+};
+
+
+  const toggleTimer = () => {
+    if (!isMinuteUnit) return;
+
+    if (isTiming) {
+      stopTimerAndCommit();
+      return;
+    }
+
+    // start
+    setIsTiming(true);
+    setElapsedSec(0);
+    timerStartRef.current = Date.now();
+
+    timerIntervalRef.current = setInterval(() => {
+      const start = timerStartRef.current || Date.now();
+      const diffSec = Math.floor((Date.now() - start) / 1000);
+      setElapsedSec(diffSec);
+    }, 1000);
+  };
+
+  const formatSec = (sec) => {
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+  };
+
 
   const renderHabitInput = () => {
-    const value = isLevelHabit
-      ? item.progressByMainLevel?.[mainLevelIndex]?.[selectedDate] ?? ''
-      : item.progressByDate?.[selectedDate] ?? '';
+    const rawSec = isLevelHabit
+  ? item.progressByMainLevel?.[mainLevelIndex]?.[selectedDate] ?? 0
+  : item.progressByDate?.[selectedDate] ?? 0;
+
+  // UI 給人看的「分鐘」
+  const displayMinutes = rawSec ? (rawSec / 60).toFixed(1) : '';
+
+
 
     return (
       <input
         type="number"
         min="0"
-        placeholder="0" // Light gray text when empty
-        value={value === '' ? '' : String(value)} // Show nothing if empty
+        step="0.1"
+        placeholder="0"
+        value={displayMinutes === '' ? '' : String(displayMinutes)}
         onChange={(e) => {
-          const num = parseFloat(e.target.value);
-          if (isLevelHabit) {
-            updateItem({
-              ...item,
-              progressByMainLevel: {
-                ...item.progressByMainLevel,
-                [mainLevelIndex]: {
-                  ...(item.progressByMainLevel?.[mainLevelIndex] || {}),
-                  [selectedDate]: isNaN(num) ? 0 : num
-                }
-              }
-            });
-          } else {
-            updateItem({
-              ...item,
-              progressByDate: {
-                ...item.progressByDate,
-                [selectedDate]: isNaN(num) ? 0 : num
-              }
-            });
-          }
+          const mins = parseFloat(e.target.value);
+          const sec = isNaN(mins) ? 0 : Math.round(mins * 60);
+          setTodayValue(sec);
         }}
-        style={{ width: '40px' }}
+        style={{ width: '60px' }}
       />
+
     );
   };
 
@@ -180,6 +236,31 @@ function GroupTree({
             }}
           >
             {renderHabitInput()} /{requiredTarget} {item.unit}
+
+            {isMinuteUnit && (
+              <span style={{ fontSize: '12px', color: '#666' }}>
+                ({formatSec(Number(getTodayValue()) || 0)})
+              </span>
+            )}
+
+            {isMinuteUnit && (
+              <button
+                type="button"
+                onClick={toggleTimer}
+                title={isTiming ? 'Stop timer' : 'Start timer'}
+                style={{
+                  marginLeft: '6px',
+                  border: '1px solid #ccc',
+                  borderRadius: '6px',
+                  padding: '2px 6px',
+                  cursor: 'pointer',
+                  background: isTiming ? '#ffe9a8' : '#fff'
+                }}
+              >
+                ⏱️ {isTiming ? formatSec(elapsedSec) : 'Start'}
+              </button>
+            )}
+
             {/* ▼ Dropdown trigger */}
             <div style={{ display: 'inline-block', position: 'relative' }}>
               <button
@@ -274,6 +355,19 @@ function GroupTree({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showDropdown]);
+
+  useEffect(() => {
+  return () => {
+    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+  };
+  }, []);
+
+  useEffect(() => {
+  if (isTiming) stopTimerAndCommit();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+} , [itemId, selectedDate]);
+
+
 
   return (
     <div
