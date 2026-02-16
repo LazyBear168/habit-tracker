@@ -52,6 +52,12 @@ function GroupTree({
   const timerStartRef = useRef(null); // timestamp (ms)
   const timerIntervalRef = useRef(null);
 
+  // --- Calculator input ---
+  const [showCalculator, setShowCalculator] = useState(false);
+  const [calculatorValue, setCalculatorValue] = useState('');
+  const calculatorInputRef = useRef(null);
+  const calculatorRef = useRef(null);
+
   const isMinuteUnit = isHabit && String(item.unit || '').toLowerCase() === 'minutes';
 
   const mainLevelName = isLevelHabit ? item.mainLevels?.[mainLevelIndex] || item.name : '';
@@ -84,11 +90,28 @@ function GroupTree({
         ✏️ Edit
       </button>
 
-      {isLevelHabit && mainLevelIndex > 0 && (
+      {isLevelHabit && mainLevelIndex > 1 && (
         <button
           style={{ padding: '4px 0' }}
           onClick={() => {
-            updateItem({ ...item, currentMainLevel: mainLevelIndex - 1 });
+            updateItem({
+              ...item,
+              currentMainLevel: mainLevelIndex + 1
+            });
+            setOpenDropdownId(null);
+          }}
+        >
+          ⬆️ Upgrade
+        </button>
+      )}
+      {isLevelHabit && mainLevelIndex > 1 && (
+        <button
+          style={{ padding: '4px 0' }}
+          onClick={() => {
+            updateItem({
+              ...item,
+              currentMainLevel: mainLevelIndex - 1
+            });
             setOpenDropdownId(null);
           }}
         >
@@ -181,33 +204,92 @@ function GroupTree({
     return `${m}:${String(s).padStart(2, '0')}`;
   };
 
-  const renderHabitInput = () => {
-    const rawSec = isLevelHabit
-      ? (item.progressByMainLevel?.[mainLevelIndex]?.[selectedDate] ?? 0)
-      : (item.progressByDate?.[selectedDate] ?? 0);
+  const addToValue = (amount) => {
+    const current = Number(getTodayValue()) || 0;
+    if (isMinuteUnit) {
+      // For minute units, amount is in minutes, convert to seconds
+      const secondsToAdd = amount * 60;
+      setTodayValue(current + secondsToAdd);
+    } else {
+      // For other units, add directly
+      setTodayValue(current + amount);
+    }
+  };
 
-    // UI 給人看的「分鐘」
-    const displayMinutes =
-      rawSec != null ? `${Math.floor(rawSec / 60)}:${String(rawSec % 60).padStart(2, '0')}` : '';
+  const openCalculator = () => {
+    const currentValue = getTodayValue();
+    // Set initial value based on unit type
+    if (isMinuteUnit) {
+      setCalculatorValue(
+        currentValue === '' || currentValue === 0 ? '' : (Number(currentValue) / 60).toFixed(1)
+      );
+    } else {
+      setCalculatorValue(currentValue === '' || currentValue === 0 ? '' : String(currentValue));
+    }
+    setShowCalculator(true);
+  };
+
+  const handleCalculatorSubmit = () => {
+    const num = parseFloat(calculatorValue);
+    if (!isNaN(num) && num >= 0) {
+      if (isMinuteUnit) {
+        // Convert minutes to seconds
+        const sec = Math.round(num * 60);
+        setTodayValue(sec);
+      } else {
+        // Use the value directly for non-minute units
+        setTodayValue(num);
+      }
+    }
+    setShowCalculator(false);
+    setCalculatorValue('');
+  };
+
+  const handleCalculatorCancel = () => {
+    setShowCalculator(false);
+    setCalculatorValue('');
+  };
+
+  const renderHabitInput = () => {
+    const rawValue = isLevelHabit
+      ? (item.progressByMainLevel?.[mainLevelIndex]?.[selectedDate] ?? '')
+      : (item.progressByDate?.[selectedDate] ?? '');
+
+    // For minute units, convert seconds to minutes for display
+    // For other units, use the raw value directly
+    const displayValue = isMinuteUnit
+      ? rawValue === ''
+        ? ''
+        : (Number(rawValue) / 60).toFixed(1)
+      : rawValue === ''
+        ? ''
+        : String(rawValue);
+
     return (
       <input
         type="number"
         min="0"
-        step="0.1"
+        step={isMinuteUnit ? '0.1' : '1'}
         placeholder="0"
-        value={displayMinutes === '' ? '' : String(displayMinutes)}
-        onChange={(e) => {
-          const mins = parseFloat(e.target.value);
-          const sec = isNaN(mins) ? 0 : Math.round(mins * 60);
-          setTodayValue(sec);
+        value={displayValue}
+        readOnly
+        style={{
+          width: isMinuteUnit ? '55px' : '45px',
+          padding: '2px 4px',
+          border: 'none',
+          borderRadius: '3px',
+          fontSize: '13px',
+          textAlign: 'center',
+          backgroundColor: 'transparent',
+          cursor: 'default',
+          color: '#2196f3'
         }}
-        style={{ width: '60px' }}
       />
     );
   };
 
   const renderHabitLine = () => {
-    const label = isLevelHabit ? `${mainLevelName}` : `${item.name}: `;
+    const label = isLevelHabit ? `${mainLevelName}` : `${item.name}`;
 
     const progressPercent =
       nextLevelTotal > 0 ? Math.min(100, Math.floor((totalCount / nextLevelTotal) * 100)) : 0;
@@ -215,42 +297,205 @@ function GroupTree({
 
     return (
       <div style={{ position: 'relative', marginBottom: '8px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            {status} {label}
-          </div>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          {/* Left: Status + Label + Input + Unit */}
           <div
-            style={{
-              width: '160px',
-              display: 'flex',
-              alignItems: 'left',
-              justifyContent: 'space-between',
-              gap: '6px'
-            }}
+            style={{ display: 'flex', alignItems: 'center', gap: '4px', flex: '1', minWidth: 0 }}
           >
-            {renderHabitInput()} /{requiredTarget} {item.unit}
+            <span>{status}</span>
+            <span>{label}</span>
+            {renderHabitInput()}
+            <span style={{ fontSize: '13px', color: '#555' }}>
+              /{requiredTarget} {item.unit}
+            </span>
             {isMinuteUnit && (
-              <span style={{ fontSize: '12px', color: '#666' }}>
+              <span style={{ fontSize: '11px', color: '#888' }}>
                 ({formatSec(Number(getTodayValue()) || 0)})
               </span>
             )}
+          </div>
+
+          {/* Middle: Quick action buttons */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+            <button
+              type="button"
+              onClick={() => addToValue(10)}
+              style={{
+                border: '1px solid #4caf50',
+                borderRadius: '3px',
+                padding: '2px 5px',
+                cursor: 'pointer',
+                background: '#e8f5e9',
+                fontSize: '10px',
+                fontWeight: '500',
+                color: '#2e7d32',
+                minWidth: '28px',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = '#c8e6c9';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = '#e8f5e9';
+              }}
+              title={`Add 10 ${item.unit || ''}`}
+            >
+              +10
+            </button>
+            <button
+              type="button"
+              onClick={() => addToValue(20)}
+              style={{
+                border: '1px solid #4caf50',
+                borderRadius: '3px',
+                padding: '2px 5px',
+                cursor: 'pointer',
+                background: '#e8f5e9',
+                fontSize: '10px',
+                fontWeight: '500',
+                color: '#2e7d32',
+                minWidth: '28px',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = '#c8e6c9';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = '#e8f5e9';
+              }}
+              title={`Add 20 ${item.unit || ''}`}
+            >
+              +20
+            </button>
+          </div>
+
+          {/* Right: Timer, Calculator and dropdown */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
             {isMinuteUnit && (
               <button
                 type="button"
                 onClick={toggleTimer}
                 title={isTiming ? 'Stop timer' : 'Start timer'}
                 style={{
-                  marginLeft: '6px',
                   border: '1px solid #ccc',
-                  borderRadius: '6px',
-                  padding: '2px 6px',
+                  borderRadius: '4px',
+                  padding: '2px 8px',
                   cursor: 'pointer',
-                  background: isTiming ? '#ffe9a8' : '#fff'
+                  background: isTiming ? '#ffe9a8' : '#f5f5f5',
+                  fontSize: '11px',
+                  whiteSpace: 'nowrap',
+                  transition: 'background 0.2s'
                 }}
               >
                 ⏱️ {isTiming ? formatSec(elapsedSec) : 'Start'}
               </button>
             )}
+            {/* Calculator button and input */}
+            <div style={{ display: 'inline-block', position: 'relative' }} ref={calculatorRef}>
+              {!showCalculator ? (
+                <button
+                  type="button"
+                  onClick={openCalculator}
+                  title="輸入數值 (Input value)"
+                  style={{
+                    background: 'none',
+                    border: '1px solid #ccc',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '16px',
+                    padding: '2px 8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = '#f0f0f0';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = 'none';
+                  }}
+                >
+                  🧮
+                </button>
+              ) : (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    background: '#fff',
+                    border: '1px solid #4caf50',
+                    borderRadius: '4px',
+                    padding: '2px 4px'
+                  }}
+                >
+                  <input
+                    ref={calculatorInputRef}
+                    type="number"
+                    min="0"
+                    step={isMinuteUnit ? '0.1' : '1'}
+                    value={calculatorValue}
+                    onChange={(e) => setCalculatorValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleCalculatorSubmit();
+                      } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        handleCalculatorCancel();
+                      }
+                    }}
+                    autoFocus
+                    style={{
+                      width: '60px',
+                      padding: '2px 4px',
+                      border: 'none',
+                      outline: 'none',
+                      fontSize: '13px',
+                      textAlign: 'center'
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCalculatorSubmit}
+                    style={{
+                      background: '#4caf50',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '3px',
+                      padding: '2px 6px',
+                      cursor: 'pointer',
+                      fontSize: '11px'
+                    }}
+                  >
+                    ✓
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCalculatorCancel}
+                    style={{
+                      background: '#f44336',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '3px',
+                      padding: '2px 6px',
+                      cursor: 'pointer',
+                      fontSize: '11px'
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+            </div>
             {/* ▼ Dropdown trigger */}
             <div style={{ display: 'inline-block', position: 'relative' }}>
               <button
@@ -260,7 +505,10 @@ function GroupTree({
                   border: 'none',
                   cursor: 'pointer',
                   fontSize: '16px',
-                  padding: '2px 6px'
+                  padding: '2px 6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
                 }}
               >
                 ⋮
@@ -356,6 +604,46 @@ function GroupTree({
     if (isTiming) stopTimerAndCommit();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itemId, selectedDate]);
+
+  // Auto focus calculator input when opened
+  useEffect(() => {
+    if (showCalculator && calculatorInputRef.current) {
+      calculatorInputRef.current.focus();
+      calculatorInputRef.current.select();
+    }
+  }, [showCalculator]);
+
+  // Handle click outside calculator
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        calculatorRef.current &&
+        !calculatorRef.current.contains(event.target) &&
+        showCalculator
+      ) {
+        const num = parseFloat(calculatorValue);
+        if (!isNaN(num) && num >= 0) {
+          if (isMinuteUnit) {
+            const sec = Math.round(num * 60);
+            setTodayValue(sec);
+          } else {
+            setTodayValue(num);
+          }
+        }
+        setShowCalculator(false);
+        setCalculatorValue('');
+      }
+    };
+
+    if (showCalculator) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showCalculator, calculatorValue]);
 
   return (
     <div
