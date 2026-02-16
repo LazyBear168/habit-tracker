@@ -11,17 +11,17 @@ import { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
 const UNIT_OPTIONS = [
-  "times",
-  "minutes",
-  "hours",
-  "km",
-  "m",
-  "steps",
-  "pages",
-  "kcal",
-  "cups",
-  "sets",
-  "reps",
+  'reps',
+  'minutes',
+  'hours',
+  'km',
+  'm',
+  'steps',
+  'pages',
+  'kcal',
+  'cups',
+  'sets',
+  'reps'
 ];
 
 function AddItemForm({ items, updateItem, editItem = null, onClose }) {
@@ -136,7 +136,7 @@ function AddItemForm({ items, updateItem, editItem = null, onClose }) {
               value={unit}
               onChange={(e) => setUnit(e.target.value)}
               required
-              style={{ marginLeft: "10px" }}
+              style={{ marginLeft: '10px' }}
             >
               <option value="">(Select unit)</option>
               {UNIT_OPTIONS.map((u) => (

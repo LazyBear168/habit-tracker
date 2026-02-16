@@ -1,5 +1,15 @@
 {
   "projects": {
     "default": "sunny-habit-app"
-  }
+  },
+  "targets": {
+    "sunny-habit-app": {
+      "hosting": {
+        "default": [
+          "sunny-habit-app"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }
