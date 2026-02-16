@@ -48,9 +48,11 @@ function GroupTree({
   // --- Timer (for unit === 'minutes') ---
   const [isTiming, setIsTiming] = useState(false);
   const [elapsedSec, setElapsedSec] = useState(0);
+  const [countdown, setCountdown] = useState(0); // 倒数秒数
 
   const timerStartRef = useRef(null); // timestamp (ms)
   const timerIntervalRef = useRef(null);
+  const countdownIntervalRef = useRef(null);
 
   // --- Calculator input ---
   const [showCalculator, setShowCalculator] = useState(false);
@@ -166,6 +168,11 @@ function GroupTree({
       timerIntervalRef.current = null;
     }
 
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+
     const secondsToAdd = elapsedSec; // ⭐ 直接用秒
 
     if (secondsToAdd > 0) {
@@ -174,28 +181,66 @@ function GroupTree({
     }
 
     setElapsedSec(0);
+    setCountdown(0);
     timerStartRef.current = null;
     setIsTiming(false);
+  };
+
+  const startCountdown = () => {
+    setCountdown(5);
+    setIsTiming(true); // 设置为计时状态，但实际计时还未开始
+    
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+    }
+    
+    countdownIntervalRef.current = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          // 倒数结束，开始真正的计时
+          const intervalId = countdownIntervalRef.current;
+          if (intervalId) {
+            clearInterval(intervalId);
+            countdownIntervalRef.current = null;
+          }
+          // 开始计时
+          setCountdown(0);
+          setElapsedSec(0);
+          timerStartRef.current = Date.now();
+
+          timerIntervalRef.current = setInterval(() => {
+            const start = timerStartRef.current || Date.now();
+            const diffSec = Math.floor((Date.now() - start) / 1000);
+            setElapsedSec(diffSec);
+          }, 1000);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
   };
 
   const toggleTimer = () => {
     if (!isMinuteUnit) return;
 
     if (isTiming) {
+      // 如果正在倒数，取消倒数并停止
+      if (countdown > 0) {
+        if (countdownIntervalRef.current) {
+          clearInterval(countdownIntervalRef.current);
+          countdownIntervalRef.current = null;
+        }
+        setCountdown(0);
+        setIsTiming(false);
+        return;
+      }
+      // 如果正在计时，停止并保存
       stopTimerAndCommit();
       return;
     }
 
-    // start
-    setIsTiming(true);
-    setElapsedSec(0);
-    timerStartRef.current = Date.now();
-
-    timerIntervalRef.current = setInterval(() => {
-      const start = timerStartRef.current || Date.now();
-      const diffSec = Math.floor((Date.now() - start) / 1000);
-      setElapsedSec(diffSec);
-    }, 1000);
+    // 点击开始，先倒数5秒
+    startCountdown();
   };
 
   const formatSec = (sec) => {
@@ -382,19 +427,21 @@ function GroupTree({
               <button
                 type="button"
                 onClick={toggleTimer}
-                title={isTiming ? 'Stop timer' : 'Start timer'}
+                title={isTiming ? (countdown > 0 ? `倒數 ${countdown} 秒後開始` : 'Stop timer') : 'Start timer (倒數5秒後開始)'}
                 style={{
                   border: '1px solid #ccc',
                   borderRadius: '4px',
                   padding: '2px 8px',
                   cursor: 'pointer',
-                  background: isTiming ? '#ffe9a8' : '#f5f5f5',
+                  background: countdown > 0 ? '#ff9800' : isTiming ? '#ffe9a8' : '#f5f5f5',
                   fontSize: '11px',
                   whiteSpace: 'nowrap',
-                  transition: 'background 0.2s'
+                  transition: 'background 0.2s',
+                  color: countdown > 0 ? '#fff' : 'inherit',
+                  fontWeight: countdown > 0 ? 'bold' : 'normal'
                 }}
               >
-                ⏱️ {isTiming ? formatSec(elapsedSec) : 'Start'}
+                ⏱️ {countdown > 0 ? `倒數 ${countdown}` : isTiming ? formatSec(elapsedSec) : 'Start'}
               </button>
             )}
             {/* Calculator button and input */}
@@ -597,11 +644,18 @@ function GroupTree({
   useEffect(() => {
     return () => {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
     };
   }, []);
 
   useEffect(() => {
-    if (isTiming) stopTimerAndCommit();
+    if (isTiming || countdown > 0) {
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
+      }
+      stopTimerAndCommit();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itemId, selectedDate]);
 
