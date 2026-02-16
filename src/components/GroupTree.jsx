@@ -368,128 +368,8 @@ function GroupTree({
             )}
           </div>
 
-          {/* Right: Timer, Calculator and dropdown */}
+          {/* Right: Dropdown only */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-            {isMinuteUnit && (
-              <button
-                type="button"
-                onClick={toggleTimer}
-                title={isTiming ? (countdown > 0 ? `倒數 ${countdown} 秒後開始` : 'Stop timer') : 'Start timer (倒數5秒後開始)'}
-                style={{
-                  border: '1px solid #ccc',
-                  borderRadius: '4px',
-                  padding: '2px 8px',
-                  cursor: 'pointer',
-                  background: countdown > 0 ? '#ff9800' : isTiming ? '#ffe9a8' : '#f5f5f5',
-                  fontSize: '11px',
-                  whiteSpace: 'nowrap',
-                  transition: 'background 0.2s',
-                  color: countdown > 0 ? '#fff' : 'inherit',
-                  fontWeight: countdown > 0 ? 'bold' : 'normal'
-                }}
-              >
-                ⏱️ {countdown > 0 ? `倒數 ${countdown}` : isTiming ? formatSec(elapsedSec) : 'Start'}
-              </button>
-            )}
-            {/* Calculator button and input */}
-            <div style={{ display: 'inline-block', position: 'relative' }} ref={calculatorRef}>
-              {!showCalculator ? (
-                <button
-                  type="button"
-                  onClick={openCalculator}
-                  title="輸入數值 (Input value)"
-                  style={{
-                    background: 'none',
-                    border: '1px solid #ccc',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '16px',
-                    padding: '2px 8px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    transition: 'background 0.2s'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.background = '#f0f0f0';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.background = 'none';
-                  }}
-                >
-                  🧮
-                </button>
-              ) : (
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    background: '#fff',
-                    border: '1px solid #4caf50',
-                    borderRadius: '4px',
-                    padding: '2px 4px'
-                  }}
-                >
-                  <input
-                    ref={calculatorInputRef}
-                    type="number"
-                    min="0"
-                    step={isMinuteUnit ? '0.1' : '1'}
-                    value={calculatorValue}
-                    onChange={(e) => setCalculatorValue(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleCalculatorSubmit();
-                      } else if (e.key === 'Escape') {
-                        e.preventDefault();
-                        handleCalculatorCancel();
-                      }
-                    }}
-                    autoFocus
-                    style={{
-                      width: '60px',
-                      padding: '2px 4px',
-                      border: 'none',
-                      outline: 'none',
-                      fontSize: '13px',
-                      textAlign: 'center'
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={handleCalculatorSubmit}
-                    style={{
-                      background: '#4caf50',
-                      color: '#fff',
-                      border: 'none',
-                      borderRadius: '3px',
-                      padding: '2px 6px',
-                      cursor: 'pointer',
-                      fontSize: '11px'
-                    }}
-                  >
-                    ✓
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleCalculatorCancel}
-                    style={{
-                      background: '#f44336',
-                      color: '#fff',
-                      border: 'none',
-                      borderRadius: '3px',
-                      padding: '2px 6px',
-                      cursor: 'pointer',
-                      fontSize: '11px'
-                    }}
-                  >
-                    ✕
-                  </button>
-                </div>
-              )}
-            </div>
             {/* ▼ Dropdown trigger */}
             <div style={{ display: 'inline-block', position: 'relative' }}>
               <button
@@ -513,8 +393,8 @@ function GroupTree({
           </div>
         </div>
 
-        {/* Second row: Quick action buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '3px', marginTop: '4px' }}>
+        {/* Second row: Quick action buttons, Timer, Calculator */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px', marginTop: '4px' }}>
           <button
             type="button"
             onClick={() => addToValue(10)}
@@ -565,6 +445,126 @@ function GroupTree({
           >
             +20
           </button>
+          {isMinuteUnit && (
+            <button
+              type="button"
+              onClick={toggleTimer}
+              title={isTiming ? (countdown > 0 ? `倒數 ${countdown} 秒後開始` : 'Stop timer') : 'Start timer (倒數5秒後開始)'}
+              style={{
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                padding: '2px 8px',
+                cursor: 'pointer',
+                background: countdown > 0 ? '#ff9800' : isTiming ? '#ffe9a8' : '#f5f5f5',
+                fontSize: '11px',
+                whiteSpace: 'nowrap',
+                transition: 'background 0.2s',
+                color: countdown > 0 ? '#fff' : 'inherit',
+                fontWeight: countdown > 0 ? 'bold' : 'normal'
+              }}
+            >
+              ⏱️ {countdown > 0 ? `倒數 ${countdown}` : isTiming ? formatSec(elapsedSec) : 'Start'}
+            </button>
+          )}
+          {/* Calculator button and input */}
+          <div style={{ display: 'inline-block', position: 'relative' }} ref={calculatorRef}>
+            {!showCalculator ? (
+              <button
+                type="button"
+                onClick={openCalculator}
+                title="輸入數值 (Input value)"
+                style={{
+                  background: 'none',
+                  border: '1px solid #ccc',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '16px',
+                  padding: '2px 8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'background 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.background = '#f0f0f0';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = 'none';
+                }}
+              >
+                🧮
+              </button>
+            ) : (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  background: '#fff',
+                  border: '1px solid #4caf50',
+                  borderRadius: '4px',
+                  padding: '2px 4px'
+                }}
+              >
+                <input
+                  ref={calculatorInputRef}
+                  type="number"
+                  min="0"
+                  step={isMinuteUnit ? '0.1' : '1'}
+                  value={calculatorValue}
+                  onChange={(e) => setCalculatorValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleCalculatorSubmit();
+                    } else if (e.key === 'Escape') {
+                      e.preventDefault();
+                      handleCalculatorCancel();
+                    }
+                  }}
+                  autoFocus
+                  style={{
+                    width: '60px',
+                    padding: '2px 4px',
+                    border: 'none',
+                    outline: 'none',
+                    fontSize: '13px',
+                    textAlign: 'center'
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={handleCalculatorSubmit}
+                  style={{
+                    background: '#4caf50',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '3px',
+                    padding: '2px 6px',
+                    cursor: 'pointer',
+                    fontSize: '11px'
+                  }}
+                >
+                  ✓
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCalculatorCancel}
+                  style={{
+                    background: '#f44336',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '3px',
+                    padding: '2px 6px',
+                    cursor: 'pointer',
+                    fontSize: '11px'
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {isLevelHabit && (
