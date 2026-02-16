@@ -342,6 +342,7 @@ function GroupTree({
 
     return (
       <div style={{ position: 'relative', marginBottom: '8px' }}>
+        {/* First row: Status + Label + Input + Unit, Timer, Calculator, Dropdown */}
         <div
           style={{
             display: 'flex',
@@ -365,60 +366,6 @@ function GroupTree({
                 ({formatSec(Number(getTodayValue()) || 0)})
               </span>
             )}
-          </div>
-
-          {/* Middle: Quick action buttons */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-            <button
-              type="button"
-              onClick={() => addToValue(10)}
-              style={{
-                border: '1px solid #4caf50',
-                borderRadius: '3px',
-                padding: '2px 5px',
-                cursor: 'pointer',
-                background: '#e8f5e9',
-                fontSize: '10px',
-                fontWeight: '500',
-                color: '#2e7d32',
-                minWidth: '28px',
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.background = '#c8e6c9';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.background = '#e8f5e9';
-              }}
-              title={`Add 10 ${item.unit || ''}`}
-            >
-              +10
-            </button>
-            <button
-              type="button"
-              onClick={() => addToValue(20)}
-              style={{
-                border: '1px solid #4caf50',
-                borderRadius: '3px',
-                padding: '2px 5px',
-                cursor: 'pointer',
-                background: '#e8f5e9',
-                fontSize: '10px',
-                fontWeight: '500',
-                color: '#2e7d32',
-                minWidth: '28px',
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.background = '#c8e6c9';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.background = '#e8f5e9';
-              }}
-              title={`Add 20 ${item.unit || ''}`}
-            >
-              +20
-            </button>
           </div>
 
           {/* Right: Timer, Calculator and dropdown */}
@@ -564,6 +511,60 @@ function GroupTree({
               {showDropdown && renderDropdownMenu()}
             </div>
           </div>
+        </div>
+
+        {/* Second row: Quick action buttons */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '3px', marginTop: '4px' }}>
+          <button
+            type="button"
+            onClick={() => addToValue(10)}
+            style={{
+              border: '1px solid #4caf50',
+              borderRadius: '3px',
+              padding: '2px 5px',
+              cursor: 'pointer',
+              background: '#e8f5e9',
+              fontSize: '10px',
+              fontWeight: '500',
+              color: '#2e7d32',
+              minWidth: '28px',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.background = '#c8e6c9';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.background = '#e8f5e9';
+            }}
+            title={`Add 10 ${item.unit || ''}`}
+          >
+            +10
+          </button>
+          <button
+            type="button"
+            onClick={() => addToValue(20)}
+            style={{
+              border: '1px solid #4caf50',
+              borderRadius: '3px',
+              padding: '2px 5px',
+              cursor: 'pointer',
+              background: '#e8f5e9',
+              fontSize: '10px',
+              fontWeight: '500',
+              color: '#2e7d32',
+              minWidth: '28px',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.background = '#c8e6c9';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.background = '#e8f5e9';
+            }}
+            title={`Add 20 ${item.unit || ''}`}
+          >
+            +20
+          </button>
         </div>
 
         {isLevelHabit && (
