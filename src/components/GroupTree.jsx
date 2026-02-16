@@ -45,15 +45,14 @@ function GroupTree({
   const showDropdown = openDropdownId === item.id;
   const dropdownRef = useRef(null);
 
-    // --- Timer (for unit === 'minutes') ---
+  // --- Timer (for unit === 'minutes') ---
   const [isTiming, setIsTiming] = useState(false);
   const [elapsedSec, setElapsedSec] = useState(0);
 
-  const timerStartRef = useRef(null);   // timestamp (ms)
+  const timerStartRef = useRef(null); // timestamp (ms)
   const timerIntervalRef = useRef(null);
 
   const isMinuteUnit = isHabit && String(item.unit || '').toLowerCase() === 'minutes';
-
 
   const mainLevelName = isLevelHabit ? item.mainLevels?.[mainLevelIndex] || item.name : '';
 
@@ -85,35 +84,34 @@ function GroupTree({
         ✏️ Edit
       </button>
 
-       
-    {isLevelHabit && mainLevelIndex > 0 && (
+      {isLevelHabit && mainLevelIndex > 0 && (
+        <button
+          style={{ padding: '4px 0' }}
+          onClick={() => {
+            updateItem({ ...item, currentMainLevel: mainLevelIndex - 1 });
+            setOpenDropdownId(null);
+          }}
+        >
+          ⬇️ Downgrade
+        </button>
+      )}
+
       <button
         style={{ padding: '4px 0' }}
         onClick={() => {
-          updateItem({ ...item, currentMainLevel: mainLevelIndex - 1 });
+          if (confirm(`Delete "${item.name}"?`)) deleteItem(item.id);
           setOpenDropdownId(null);
         }}
       >
-        ⬇️ Downgrade
+        🗑️ Delete
       </button>
-    )}
+    </div>
+  );
 
-    <button
-      style={{ padding: '4px 0' }}
-      onClick={() => {
-        if (confirm(`Delete "${item.name}"?`)) deleteItem(item.id);
-        setOpenDropdownId(null);
-      }}
-    >
-      🗑️ Delete
-    </button>
-  </div>
-);
-
-    const getTodayValue = () => {
+  const getTodayValue = () => {
     return isLevelHabit
-      ? item.progressByMainLevel?.[mainLevelIndex]?.[selectedDate] ?? 0
-      : item.progressByDate?.[selectedDate] ?? 0;
+      ? (item.progressByMainLevel?.[mainLevelIndex]?.[selectedDate] ?? 0)
+      : (item.progressByDate?.[selectedDate] ?? 0);
   };
 
   const setTodayValue = (newVal) => {
@@ -140,23 +138,22 @@ function GroupTree({
   };
 
   const stopTimerAndCommit = () => {
-  if (timerIntervalRef.current) {
-    clearInterval(timerIntervalRef.current);
-    timerIntervalRef.current = null;
-  }
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
 
-  const secondsToAdd = elapsedSec; // ⭐ 直接用秒
+    const secondsToAdd = elapsedSec; // ⭐ 直接用秒
 
-  if (secondsToAdd > 0) {
-    const current = Number(getTodayValue()) || 0;
-    setTodayValue(current + secondsToAdd);
-  }
+    if (secondsToAdd > 0) {
+      const current = Number(getTodayValue()) || 0;
+      setTodayValue(current + secondsToAdd);
+    }
 
-  setElapsedSec(0);
-  timerStartRef.current = null;
-  setIsTiming(false);
-};
-
+    setElapsedSec(0);
+    timerStartRef.current = null;
+    setIsTiming(false);
+  };
 
   const toggleTimer = () => {
     if (!isMinuteUnit) return;
@@ -179,22 +176,19 @@ function GroupTree({
   };
 
   const formatSec = (sec) => {
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
-  return `${m}:${String(s).padStart(2, '0')}`;
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m}:${String(s).padStart(2, '0')}`;
   };
-
 
   const renderHabitInput = () => {
     const rawSec = isLevelHabit
-  ? item.progressByMainLevel?.[mainLevelIndex]?.[selectedDate] ?? 0
-  : item.progressByDate?.[selectedDate] ?? 0;
+      ? (item.progressByMainLevel?.[mainLevelIndex]?.[selectedDate] ?? 0)
+      : (item.progressByDate?.[selectedDate] ?? 0);
 
-  // UI 給人看的「分鐘」
-  const displayMinutes = rawSec ? (rawSec / 60).toFixed(1) : '';
-
-
-
+    // UI 給人看的「分鐘」
+    const displayMinutes =
+      rawSec != null ? `${Math.floor(rawSec / 60)}:${String(rawSec % 60).padStart(2, '0')}` : '';
     return (
       <input
         type="number"
@@ -209,7 +203,6 @@ function GroupTree({
         }}
         style={{ width: '60px' }}
       />
-
     );
   };
 
@@ -236,13 +229,11 @@ function GroupTree({
             }}
           >
             {renderHabitInput()} /{requiredTarget} {item.unit}
-
             {isMinuteUnit && (
               <span style={{ fontSize: '12px', color: '#666' }}>
                 ({formatSec(Number(getTodayValue()) || 0)})
               </span>
             )}
-
             {isMinuteUnit && (
               <button
                 type="button"
@@ -260,7 +251,6 @@ function GroupTree({
                 ⏱️ {isTiming ? formatSec(elapsedSec) : 'Start'}
               </button>
             )}
-
             {/* ▼ Dropdown trigger */}
             <div style={{ display: 'inline-block', position: 'relative' }}>
               <button
@@ -357,17 +347,15 @@ function GroupTree({
   }, [showDropdown]);
 
   useEffect(() => {
-  return () => {
-    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-  };
+    return () => {
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    };
   }, []);
 
   useEffect(() => {
-  if (isTiming) stopTimerAndCommit();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-} , [itemId, selectedDate]);
-
-
+    if (isTiming) stopTimerAndCommit();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemId, selectedDate]);
 
   return (
     <div

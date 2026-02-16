@@ -20,10 +20,11 @@ export default function MainView({
   openDropdownId,
   setOpenDropdownId
 }) {
+  const allChildren = Object.values(items)
+    .filter((i) => i.type === 'group')
+    .flatMap((g) => g.children);
+
   const topLevelItems = Object.values(items).filter((item) => {
-    const allChildren = Object.values(items)
-      .filter((i) => i.type === 'group')
-      .flatMap((g) => g.children);
     return !allChildren.includes(item.id);
   });
 
