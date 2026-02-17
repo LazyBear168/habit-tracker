@@ -189,11 +189,11 @@ function GroupTree({
   const startCountdown = () => {
     setCountdown(5);
     setIsTiming(true); // 设置为计时状态，但实际计时还未开始
-    
+
     if (countdownIntervalRef.current) {
       clearInterval(countdownIntervalRef.current);
     }
-    
+
     countdownIntervalRef.current = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
@@ -319,14 +319,12 @@ function GroupTree({
         value={displayValue}
         readOnly
         style={{
-          width: isMinuteUnit ? '55px' : '45px',
-          padding: '2px 4px',
+          width: '40px',
+          padding: '0px 0px',
           border: 'none',
-          borderRadius: '3px',
           fontSize: '13px',
-          textAlign: 'center',
+          textAlign: 'right',
           backgroundColor: 'transparent',
-          cursor: 'default',
           color: '#2196f3'
         }}
       />
@@ -357,10 +355,13 @@ function GroupTree({
           >
             <span>{status}</span>
             <span>{label}</span>
-            {renderHabitInput()}
-            <span style={{ fontSize: '13px', color: '#555' }}>
-              /{requiredTarget} {item.unit}
-            </span>
+            <div style={{ display: 'inline-flex', alignItems: 'baseline' }}>
+              {renderHabitInput()}
+              <span style={{ fontSize: '13px', color: '#555' }}>
+                /{requiredTarget} {item.unit}
+              </span>
+            </div>
+
             {isMinuteUnit && (
               <span style={{ fontSize: '11px', color: '#888' }}>
                 ({formatSec(Number(getTodayValue()) || 0)})
@@ -394,7 +395,15 @@ function GroupTree({
         </div>
 
         {/* Second row: Quick action buttons, Timer, Calculator */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px', marginTop: '4px' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            gap: '6px',
+            marginTop: '4px'
+          }}
+        >
           <button
             type="button"
             onClick={() => addToValue(10)}
@@ -449,7 +458,13 @@ function GroupTree({
             <button
               type="button"
               onClick={toggleTimer}
-              title={isTiming ? (countdown > 0 ? `倒數 ${countdown} 秒後開始` : 'Stop timer') : 'Start timer (倒數5秒後開始)'}
+              title={
+                isTiming
+                  ? countdown > 0
+                    ? `倒數 ${countdown} 秒後開始`
+                    : 'Stop timer'
+                  : 'Start timer (倒數5秒後開始)'
+              }
               style={{
                 border: '1px solid #ccc',
                 borderRadius: '4px',
