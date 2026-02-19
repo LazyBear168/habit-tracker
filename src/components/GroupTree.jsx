@@ -13,6 +13,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { evaluateCompletion } from './evaluate';
+import { useClickOutside } from '../hooks/useClickOutside';
 
 function GroupTree({
   items,
@@ -161,6 +162,24 @@ function GroupTree({
       });
     }
   };
+
+  const handleCalculatorOutside = () => {
+    // 行為保持與原本 useEffect 一樣：點外面 = commit（若合法）+ close + clear
+    const num = parseFloat(calculatorValue);
+    if (!isNaN(num) && num >= 0) {
+      if (isMinuteUnit) {
+        const sec = Math.round(num * 60);
+        setTodayValue(sec);
+      } else {
+        setTodayValue(num);
+      }
+    }
+    setShowCalculator(false);
+    setCalculatorValue('');
+  };
+
+  useClickOutside(dropdownRef, () => setOpenDropdownId(null), showDropdown);
+  useClickOutside(calculatorRef, handleCalculatorOutside, showCalculator);
 
   const stopTimerAndCommit = () => {
     if (timerIntervalRef.current) {
@@ -642,22 +661,6 @@ function GroupTree({
   };
 
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setOpenDropdownId(null);
-      }
-    };
-
-    if (showDropdown) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showDropdown]);
-
-  useEffect(() => {
     return () => {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
       if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
@@ -682,38 +685,6 @@ function GroupTree({
       calculatorInputRef.current.select();
     }
   }, [showCalculator]);
-
-  // Handle click outside calculator
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (
-        calculatorRef.current &&
-        !calculatorRef.current.contains(event.target) &&
-        showCalculator
-      ) {
-        const num = parseFloat(calculatorValue);
-        if (!isNaN(num) && num >= 0) {
-          if (isMinuteUnit) {
-            const sec = Math.round(num * 60);
-            setTodayValue(sec);
-          } else {
-            setTodayValue(num);
-          }
-        }
-        setShowCalculator(false);
-        setCalculatorValue('');
-      }
-    };
-
-    if (showCalculator) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showCalculator, calculatorValue]);
 
   return (
     <div
