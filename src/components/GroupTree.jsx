@@ -10,14 +10,17 @@
 //   nested rendering of child items, and progress input handling.
 //   Evaluates completion status via evaluateCompletion() for visual feedback and progress display.
 
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 
 import { evaluateCompletion } from './evaluate';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { useBoundHabitTimer } from '../hooks/useBoundHabitTimer';
 
 import HabitValueCalculator from './HabitValueCalculator';
-import { rawToDisplayString, getInputStep } from '../utils/habitValueAdapter';
+
+import { useHabitValue } from '../hooks/useHabitValue';
+
+import { useHabitValueAtTarget } from '../hooks/useHabitValueAtTarget';
 
 function GroupTree({
   items,
@@ -50,7 +53,35 @@ function GroupTree({
   const showDropdown = openDropdownId === item.id;
   const dropdownRef = useRef(null);
 
+  const [hoverQuickAdd, setHoverQuickAdd] = useState(null);
+
+  const quickAddBaseStyle = {
+    border: '1px solid #4caf50',
+    borderRadius: '3px',
+    padding: '2px 5px',
+    cursor: 'pointer',
+    background: '#e8f5e9',
+    fontSize: '10px',
+    fontWeight: '500',
+    color: '#2e7d32',
+    minWidth: '28px',
+    transition: 'all 0.2s'
+  };
+
+  const quickAddHoverStyle = {
+    background: '#c8e6c9'
+  };
+
   const isMinuteUnit = isHabit && String(item.unit || '').toLowerCase() === 'minutes';
+
+  const { rawValue, setRawValue, displayValue, inputStep, addDisplayValue } = useHabitValue({
+    item,
+    selectedDate,
+    updateItem,
+    isLevelHabit,
+    mainLevelIndex,
+    isMinuteUnit
+  });
 
   const mainLevelName = isLevelHabit ? item.mainLevels?.[mainLevelIndex] || item.name : '';
 
@@ -123,36 +154,9 @@ function GroupTree({
     </div>
   );
 
-  const getTodayValue = () => {
-    return isLevelHabit
-      ? (item.progressByMainLevel?.[mainLevelIndex]?.[selectedDate] ?? 0)
-      : (item.progressByDate?.[selectedDate] ?? 0);
-  };
-
-  const setTodayValue = (newVal) => {
-    if (isLevelHabit) {
-      updateItem({
-        ...item,
-        progressByMainLevel: {
-          ...item.progressByMainLevel,
-          [mainLevelIndex]: {
-            ...(item.progressByMainLevel?.[mainLevelIndex] || {}),
-            [selectedDate]: newVal
-          }
-        }
-      });
-    } else {
-      updateItem({
-        ...item,
-        progressByDate: {
-          ...item.progressByDate,
-          [selectedDate]: newVal
-        }
-      });
-    }
-  };
-
   useClickOutside(dropdownRef, () => setOpenDropdownId(null), showDropdown);
+
+  const habitValueAtTarget = useHabitValueAtTarget({ items, updateItem });
 
   const timer = useBoundHabitTimer({
     enabled: isMinuteUnit,
@@ -165,41 +169,8 @@ function GroupTree({
       mainLevelIndex
     }),
 
-    getCurrentValueAtTarget: (target) => {
-      const targetItem = items[target.itemId];
-      if (!targetItem) return 0;
-
-      if (target.isLevelHabit) {
-        return targetItem.progressByMainLevel?.[target.mainLevelIndex]?.[target.date] ?? 0;
-      }
-      return targetItem.progressByDate?.[target.date] ?? 0;
-    },
-
-    commitValueAtTarget: (target, newValue) => {
-      const targetItem = items[target.itemId];
-      if (!targetItem) return;
-
-      if (target.isLevelHabit) {
-        updateItem({
-          ...targetItem,
-          progressByMainLevel: {
-            ...targetItem.progressByMainLevel,
-            [target.mainLevelIndex]: {
-              ...(targetItem.progressByMainLevel?.[target.mainLevelIndex] || {}),
-              [target.date]: newValue
-            }
-          }
-        });
-      } else {
-        updateItem({
-          ...targetItem,
-          progressByDate: {
-            ...targetItem.progressByDate,
-            [target.date]: newValue
-          }
-        });
-      }
-    }
+    getCurrentValueAtTarget: habitValueAtTarget.getRawValueAtTarget,
+    commitValueAtTarget: habitValueAtTarget.setRawValueAtTarget
   });
 
   const isTiming = timer.isTiming;
@@ -207,32 +178,12 @@ function GroupTree({
   const elapsedSec = timer.elapsedSec;
   const formatSec = timer.formatSec;
 
-  const addToValue = (amount) => {
-    const current = Number(getTodayValue()) || 0;
-    if (isMinuteUnit) {
-      // For minute units, amount is in minutes, convert to seconds
-      const secondsToAdd = amount * 60;
-      setTodayValue(current + secondsToAdd);
-    } else {
-      // For other units, add directly
-      setTodayValue(current + amount);
-    }
-  };
-
   const renderHabitInput = () => {
-    const rawValue = isLevelHabit
-      ? (item.progressByMainLevel?.[mainLevelIndex]?.[selectedDate] ?? '')
-      : (item.progressByDate?.[selectedDate] ?? '');
-
-    // For minute units, convert seconds to minutes for display
-    // For other units, use the raw value directly
-    const displayValue = rawToDisplayString(rawValue, isMinuteUnit);
-
     return (
       <input
         type="number"
         min="0"
-        step={getInputStep(isMinuteUnit)}
+        step={inputStep}
         placeholder="0"
         value={displayValue}
         readOnly
@@ -282,7 +233,7 @@ function GroupTree({
 
             {isMinuteUnit && (
               <span style={{ fontSize: '11px', color: '#888' }}>
-                ({formatSec(Number(getTodayValue()) || 0)})
+                ({formatSec(Number(rawValue) || 0)})
               </span>
             )}
           </div>
@@ -322,56 +273,23 @@ function GroupTree({
             marginTop: '4px'
           }}
         >
-          <button
-            type="button"
-            onClick={() => addToValue(10)}
-            style={{
-              border: '1px solid #4caf50',
-              borderRadius: '3px',
-              padding: '2px 5px',
-              cursor: 'pointer',
-              background: '#e8f5e9',
-              fontSize: '10px',
-              fontWeight: '500',
-              color: '#2e7d32',
-              minWidth: '28px',
-              transition: 'all 0.2s'
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.background = '#c8e6c9';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.background = '#e8f5e9';
-            }}
-            title={`Add 10 ${item.unit || ''}`}
-          >
-            +10
-          </button>
-          <button
-            type="button"
-            onClick={() => addToValue(20)}
-            style={{
-              border: '1px solid #4caf50',
-              borderRadius: '3px',
-              padding: '2px 5px',
-              cursor: 'pointer',
-              background: '#e8f5e9',
-              fontSize: '10px',
-              fontWeight: '500',
-              color: '#2e7d32',
-              minWidth: '28px',
-              transition: 'all 0.2s'
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.background = '#c8e6c9';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.background = '#e8f5e9';
-            }}
-            title={`Add 20 ${item.unit || ''}`}
-          >
-            +20
-          </button>
+          {[5, 10, 20].map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => addDisplayValue(n)}
+              style={{
+                ...quickAddBaseStyle,
+                ...(hoverQuickAdd === n ? quickAddHoverStyle : null)
+              }}
+              onMouseEnter={() => setHoverQuickAdd(n)}
+              onMouseLeave={() => setHoverQuickAdd(null)}
+              title={`Add ${n} ${item.unit || ''}`}
+            >
+              +{n}
+            </button>
+          ))}
+
           {isMinuteUnit && (
             <button
               type="button"
@@ -402,8 +320,8 @@ function GroupTree({
           {/* Calculator button and input */}
           <HabitValueCalculator
             isMinuteUnit={isMinuteUnit}
-            rawValue={getTodayValue()}
-            commitRawValue={setTodayValue}
+            rawValue={rawValue}
+            commitRawValue={setRawValue}
           />
         </div>
 

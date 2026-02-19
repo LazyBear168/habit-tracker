@@ -1,5 +1,9 @@
 // File: src/hooks/useBoundHabitTimer.js
 // Author: Cheng (refactor assisted)
+// Purpose:
+// Timer binds target at Start (itemId + date + level)
+// Commit always goes back to original target
+//
 // Description:
 //   A habit-specific timer controller built on top of useMinuteTimer.
 //   It "binds" the commit target at Start time:
@@ -33,7 +37,7 @@ export function useBoundHabitTimer({
   getCurrentValueAtTargetRef.current = getCurrentValueAtTarget;
   commitValueAtTargetRef.current = commitValueAtTarget;
 
-  const timer = useMinuteTimer({
+    const timer = useMinuteTimer({
     enabled,
     countdownSeconds,
     onCommitSeconds: (secondsToAdd) => {
@@ -42,17 +46,15 @@ export function useBoundHabitTimer({
       const target = targetRef.current;
       if (!target) return;
 
-      // read current value from latest callback
-      const current = Number(getCurrentValueAtTargetRef.current?.(target)) || 0;
+      const current = Number(getCurrentValueAtTargetRef.current(target)) || 0;
       const newVal = current + secondsToAdd;
 
-      // commit via latest callback
-      commitValueAtTargetRef.current?.(target, newVal);
+      commitValueAtTargetRef.current(target, newVal);
 
-      // clear after commit (always clear to avoid stuck target)
       targetRef.current = null;
     }
   });
+
 
   const toggleBound = () => {
     if (!enabled) return;
