@@ -7,6 +7,7 @@
 //   Designed to be the default user interface for daily habit interaction.
 
 import GroupTree from '../components/GroupTree';
+import { useState } from 'react';
 
 export default function MainView({
   items,
@@ -20,6 +21,8 @@ export default function MainView({
   openDropdownId,
   setOpenDropdownId
 }) {
+  const [collapsedMap, setCollapsedMap] = useState({});
+
   const allChildren = Object.values(items)
     .filter((i) => i.type === 'group')
     .flatMap((g) => g.children);
@@ -69,6 +72,8 @@ export default function MainView({
             setEditItem={setEditItem}
             openDropdownId={openDropdownId}
             setOpenDropdownId={setOpenDropdownId}
+            collapsedMap={collapsedMap}
+            setCollapsedMap={setCollapsedMap}
           />
         ))}
       </div>

@@ -18,6 +18,88 @@ export function evaluateCompletion(items, id, selectedDate) {
   const item = items[id];
   if (!item) return { completed: false, count: 0, totalCount: 0 };
 
+
+// ------------------------------------------------------------
+  // GROUP LEVEL (NEW)
+  // ------------------------------------------------------------
+  if (item.type === 'group' && item.levelEnabled) {
+    const children = item.children || [];
+
+    // 先拿到每個 child 的評估結果（遞迴）
+    const childStats = children
+      .map((childId) => evaluateCompletion(items, childId, selectedDate))
+      // 避免空/undefined
+      .filter(Boolean);
+
+    // child 的「進度比值」：能算就用 totalCount/nextLevelTotal，不能算就用 completed 轉 0/1
+    const ratios = childStats.map((s) => {
+      if (s.nextLevelTotal && s.nextLevelTotal > 0) return s.totalCount / s.nextLevelTotal;
+      return s.completed ? 1 : 0;
+    });
+
+    // 也把 totalCount/nextLevelTotal 拿出來，方便 sum 策略用
+    const totalCounts = childStats.map((s) => Number(s.totalCount) || 0);
+    const nextTotals = childStats.map((s) => Number(s.nextLevelTotal) || 0);
+
+    const strategy = String(item.levelStrategy || 'min').toLowerCase();
+
+    // group level：用孩子的 level 聚合（沒有 level 就當 0）
+    const childLevels = childStats.map((s) => Number(s.level) || 0);
+
+    const safeMin = (arr) => (arr.length ? Math.min(...arr) : 0);
+    const safeMax = (arr) => (arr.length ? Math.max(...arr) : 0);
+    const safeAvg = (arr) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0);
+    const safeSum = (arr) => arr.reduce((a, b) => a + b, 0);
+
+    let progressRatio = 0;
+    let level = 0;
+
+    if (strategy === 'max') {
+      progressRatio = safeMax(ratios);
+      level = safeMax(childLevels);
+    } else if (strategy === 'avg') {
+      progressRatio = safeAvg(ratios);
+      level = Math.floor(safeAvg(childLevels));
+    } else if (strategy === 'sum') {
+      const total = safeSum(totalCounts);
+      const next = safeSum(nextTotals);
+      progressRatio = next > 0 ? total / next : safeAvg(ratios);
+      // sum 的 level 比較難定義，這裡先用 min（保守）或你也可以改成 avg/max
+      level = safeMin(childLevels);
+    } else {
+      // default: 'min'
+      progressRatio = safeMin(ratios);
+      level = safeMin(childLevels);
+    }
+
+    progressRatio = Math.max(0, Math.min(1, progressRatio));
+
+    // 讓 UI 能顯示成「x / y」
+    // 這裡用 ratio*100 代表進度，nextLevelTotal 固定 100 -> 顯示更直觀
+    const nextLevelTotal = 100;
+    const totalCount = Math.round(progressRatio * 100);
+
+    // 你原本 group 完成條件（count/totalChildren/targetCount）可以照舊算
+    // 這裡示範：維持你原本 count / totalChildren 計算方式（用 child completed）
+    const totalChildren = children.length;
+    const count = childStats.filter((s) => s.completed).length;
+
+    // targetCount：你 group data 有 targetCount
+    const requiredTarget = Number(item.targetCount ?? totalChildren) || 0;
+    const completed = requiredTarget > 0 ? count >= requiredTarget : count === totalChildren;
+
+    return {
+      completed,
+      count,
+      totalChildren,
+      requiredTarget,
+      level,
+      totalCount,
+      nextLevelTotal
+    };
+  }
+
+
   // LEVEL HABIT
   if (item.type === 'habit' && item.levelEnabled) {
     const mainLevelIndex = item.currentMainLevel ?? 0;

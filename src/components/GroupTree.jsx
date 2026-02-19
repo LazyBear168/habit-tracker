@@ -21,6 +21,24 @@ import HabitValueCalculator from './HabitValueCalculator';
 import { useHabitValue } from '../hooks/useHabitValue';
 
 import { useHabitValueAtTarget } from '../hooks/useHabitValueAtTarget';
+import { formatSec } from '../utils/formatSec';
+
+const QUICK_ADD_BASE_STYLE = {
+  border: '1px solid #4caf50',
+  borderRadius: '3px',
+  padding: '2px 5px',
+  cursor: 'pointer',
+  background: '#e8f5e9',
+  fontSize: '10px',
+  fontWeight: '500',
+  color: '#2e7d32',
+  minWidth: '28px',
+  transition: 'all 0.2s'
+};
+
+const QUICK_ADD_HOVER_STYLE = {
+  background: '#c8e6c9'
+};
 
 function GroupTree({
   items,
@@ -30,7 +48,9 @@ function GroupTree({
   deleteItem,
   setEditItem,
   openDropdownId,
-  setOpenDropdownId
+  setOpenDropdownId,
+  collapsedMap,
+  setCollapsedMap
 }) {
   const item = items[itemId];
   if (!item) return null;
@@ -39,7 +59,6 @@ function GroupTree({
     completed,
     level,
     mainLevelIndex,
-    currentValue,
     requiredTarget,
     count,
     totalCount = 0,
@@ -48,29 +67,25 @@ function GroupTree({
   } = evaluateCompletion(items, itemId, selectedDate);
 
   const isLevelHabit = item.type === 'habit' && item.levelEnabled;
+  const isLevelGroup = item.type === 'group' && item.levelEnabled;
   const isHabit = item.type === 'habit';
   const isGroup = item.type === 'group';
+  const isCollapsed = isGroup ? (collapsedMap?.[item.id] ?? true) : false;
+
+  const toggleCollapse = () => {
+    if (!isGroup) return;
+    setCollapsedMap((prev) => {
+      const prevMap = prev || {};
+      const current = prevMap[item.id] ?? true; // 預設收合
+      return {
+        ...prevMap,
+        [item.id]: !current
+      };
+    });
+  };
+
   const showDropdown = openDropdownId === item.id;
   const dropdownRef = useRef(null);
-
-  const [hoverQuickAdd, setHoverQuickAdd] = useState(null);
-
-  const quickAddBaseStyle = {
-    border: '1px solid #4caf50',
-    borderRadius: '3px',
-    padding: '2px 5px',
-    cursor: 'pointer',
-    background: '#e8f5e9',
-    fontSize: '10px',
-    fontWeight: '500',
-    color: '#2e7d32',
-    minWidth: '28px',
-    transition: 'all 0.2s'
-  };
-
-  const quickAddHoverStyle = {
-    background: '#c8e6c9'
-  };
 
   const isMinuteUnit = isHabit && String(item.unit || '').toLowerCase() === 'minutes';
 
@@ -85,74 +100,40 @@ function GroupTree({
 
   const mainLevelName = isLevelHabit ? item.mainLevels?.[mainLevelIndex] || item.name : '';
 
-  const renderDropdownMenu = () => (
-    <div
-      ref={dropdownRef}
-      className="dropdown"
-      style={{
-        position: 'absolute',
-        width: '120px',
-        top: '100%',
-        right: 0,
-        backgroundColor: '#fff',
-        border: '1px solid #ccc',
-        borderRadius: '4px',
-        padding: '6px 8px',
-        zIndex: 999,
-        marginTop: '4px',
-        boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
-      }}
-    >
-      <button
-        style={{ padding: '4px 0' }}
-        onClick={() => {
-          setEditItem(item);
-          setOpenDropdownId(null);
-        }}
-      >
-        ✏️ Edit
-      </button>
+  const closeDropdown = () => setOpenDropdownId(null);
 
-      {isLevelHabit && mainLevelIndex > 1 && (
-        <button
-          style={{ padding: '4px 0' }}
-          onClick={() => {
-            updateItem({
-              ...item,
-              currentMainLevel: mainLevelIndex + 1
-            });
-            setOpenDropdownId(null);
-          }}
-        >
-          ⬆️ Upgrade
-        </button>
-      )}
-      {isLevelHabit && mainLevelIndex > 1 && (
-        <button
-          style={{ padding: '4px 0' }}
-          onClick={() => {
-            updateItem({
-              ...item,
-              currentMainLevel: mainLevelIndex - 1
-            });
-            setOpenDropdownId(null);
-          }}
-        >
-          ⬇️ Downgrade
-        </button>
-      )}
+  const onEdit = () => {
+    setEditItem(item);
+    closeDropdown();
+  };
 
-      <button
-        style={{ padding: '4px 0' }}
-        onClick={() => {
-          if (confirm(`Delete "${item.name}"?`)) deleteItem(item.id);
-          setOpenDropdownId(null);
-        }}
-      >
-        🗑️ Delete
-      </button>
-    </div>
-  );
+  const onDelete = () => {
+    if (confirm(`Delete "${item.name}"?`)) deleteItem(item.id);
+    closeDropdown();
+  };
+
+  const mainLevelsLength = item.mainLevels?.length ?? 0;
+
+  const onUpgrade = () => {
+    updateItem({ ...item, currentMainLevel: mainLevelIndex + 1 });
+    closeDropdown();
+  };
+
+  const onDowngrade = () => {
+    updateItem({ ...item, currentMainLevel: mainLevelIndex - 1 });
+    closeDropdown();
+  };
+
+  const dropdownMenuProps = {
+    item,
+    isLevelHabit,
+    mainLevelIndex,
+    mainLevelsLength,
+    onEdit,
+    onDelete,
+    onUpgrade,
+    onDowngrade
+  };
 
   useClickOutside(dropdownRef, () => setOpenDropdownId(null), showDropdown);
 
@@ -236,30 +217,29 @@ function GroupTree({
                 ({formatSec(Number(rawValue) || 0)})
               </span>
             )}
+            <span style={{ fontSize: '12px', color: '#666' }}>LV{level}</span>
           </div>
 
           {/* Right: Dropdown only */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
             {/* ▼ Dropdown trigger */}
-            <div style={{ display: 'inline-block', position: 'relative' }}>
-              <button
-                onClick={() => setOpenDropdownId(showDropdown ? null : item.id)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '16px',
-                  padding: '2px 6px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                ⋮
-              </button>
-
-              {showDropdown && renderDropdownMenu()}
-            </div>
+            <DropdownTrigger
+              itemId={item.id}
+              show={showDropdown}
+              dropdownRef={dropdownRef}
+              onToggle={() => setOpenDropdownId(showDropdown ? null : item.id)}
+              menuProps={dropdownMenuProps}
+              buttonStyle={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '16px',
+                padding: '2px 6px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            />
           </div>
         </div>
 
@@ -273,22 +253,7 @@ function GroupTree({
             marginTop: '4px'
           }}
         >
-          {[5, 10, 20].map((n) => (
-            <button
-              key={n}
-              type="button"
-              onClick={() => addDisplayValue(n)}
-              style={{
-                ...quickAddBaseStyle,
-                ...(hoverQuickAdd === n ? quickAddHoverStyle : null)
-              }}
-              onMouseEnter={() => setHoverQuickAdd(n)}
-              onMouseLeave={() => setHoverQuickAdd(null)}
-              title={`Add ${n} ${item.unit || ''}`}
-            >
-              +{n}
-            </button>
-          ))}
+          <QuickAddButtons values={[5, 10, 20]} unit={item.unit} onAdd={addDisplayValue} />
 
           {isMinuteUnit && (
             <button
@@ -337,7 +302,9 @@ function GroupTree({
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span>LV{level}</span>
               <span>
-                {totalCount} / {nextLevelTotal}
+                {isMinuteUnit
+                  ? `${formatSec(totalCount)} / ${formatSec(nextLevelTotal)}`
+                  : `${totalCount} / ${nextLevelTotal}`}
               </span>
               <span>LV{level + 1}</span>
             </div>
@@ -366,20 +333,103 @@ function GroupTree({
   };
 
   const renderGroupLine = () => {
-    return (
-      <div>
-        {completed ? '✅' : '☑️'} {item.name} ({count}/{totalChildren} required)
-        {/* ▼ Dropdown trigger */}
-        <div style={{ display: 'inline-block', position: 'relative' }}>
-          <button
-            onClick={() => setOpenDropdownId(showDropdown ? null : item.id)}
-            style={{ display: 'block', background: 'none', border: 'none', cursor: 'pointer' }}
-          >
-            ⋮
-          </button>
+    const progressPercent =
+      nextLevelTotal > 0 ? Math.min(100, Math.floor((totalCount / nextLevelTotal) * 100)) : 0;
 
-          {showDropdown && renderDropdownMenu()}
+    return (
+      <div style={{ marginBottom: '8px' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+            <span>{completed ? '✅' : '☑️'}</span>
+            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {item.name} ({count}/{totalChildren} required)
+            </span>
+            <span style={{ fontSize: '12px', color: '#666' }}>LV{level}</span>
+          </div>
+
+          {/* Right: ⋮ + collapse toggle */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+            <DropdownTrigger
+              show={showDropdown}
+              onToggle={() => setOpenDropdownId(showDropdown ? null : item.id)}
+              dropdownRef={dropdownRef}
+              menuProps={dropdownMenuProps}
+              buttonStyle={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '16px',
+                padding: '2px 6px'
+              }}
+            />
+
+            <button
+              type="button"
+              onClick={toggleCollapse}
+              title={isCollapsed ? 'Expand' : 'Collapse'}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '16px',
+                padding: '2px 6px',
+                transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+                transition: 'transform 0.15s'
+              }}
+            >
+              ▾
+            </button>
+          </div>
         </div>
+
+        {/* NEW: group level progress bar */}
+        {isLevelGroup && isCollapsed && (
+          <div
+            style={{
+              marginTop: '6px',
+              marginBottom: '4px',
+              fontSize: '12px',
+              color: '#666'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>LV{level}</span>
+              <span>
+                {totalCount} / {nextLevelTotal}
+                <span style={{ marginLeft: '6px', fontSize: '11px', color: '#888' }}>
+                  ({String(item.levelStrategy || 'min')})
+                </span>
+              </span>
+              <span>LV{level + 1}</span>
+            </div>
+
+            <div
+              style={{
+                height: '10px',
+                background: '#e0e0e0',
+                borderRadius: '5px',
+                overflow: 'hidden',
+                marginTop: '4px'
+              }}
+            >
+              <div
+                style={{
+                  width: `${progressPercent}%`,
+                  height: '100%',
+                  background: '#4caf50',
+                  transition: 'width 0.3s'
+                }}
+              />
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -399,6 +449,7 @@ function GroupTree({
       {isHabit && renderHabitLine()}
 
       {isGroup &&
+        !isCollapsed &&
         item.children.map((childId) => (
           <GroupTree
             key={childId}
@@ -410,8 +461,102 @@ function GroupTree({
             setEditItem={setEditItem}
             openDropdownId={openDropdownId}
             setOpenDropdownId={setOpenDropdownId}
+            collapsedMap={collapsedMap}
+            setCollapsedMap={setCollapsedMap}
           />
         ))}
+    </div>
+  );
+}
+
+function QuickAddButtons({ values, unit, onAdd }) {
+  const [hover, setHover] = useState(null);
+
+  return (
+    <>
+      {values.map((n) => (
+        <button
+          key={n}
+          type="button"
+          onClick={() => onAdd(n)}
+          style={{
+            ...QUICK_ADD_BASE_STYLE,
+            ...(hover === n ? QUICK_ADD_HOVER_STYLE : null)
+          }}
+          onMouseEnter={() => setHover(n)}
+          onMouseLeave={() => setHover(null)}
+          title={`Add ${n} ${unit || ''}`}
+        >
+          +{n}
+        </button>
+      ))}
+    </>
+  );
+}
+
+function DropdownTrigger({ show, onToggle, dropdownRef, menuProps, buttonStyle }) {
+  return (
+    <div style={{ display: 'inline-block', position: 'relative' }}>
+      <button onClick={onToggle} style={buttonStyle}>
+        ⋮
+      </button>
+
+      {show && <DropdownMenu dropdownRef={dropdownRef} {...menuProps} />}
+    </div>
+  );
+}
+
+function DropdownMenu({
+  dropdownRef,
+  item,
+  isLevelHabit,
+  mainLevelIndex,
+  mainLevelsLength,
+  onEdit,
+  onDelete,
+  onUpgrade,
+  onDowngrade
+}) {
+  const canUpgrade = isLevelHabit && mainLevelsLength > 0 && mainLevelIndex < mainLevelsLength - 1;
+  const canDowngrade = isLevelHabit && mainLevelsLength > 0 && mainLevelIndex > 0;
+
+  return (
+    <div
+      ref={dropdownRef}
+      className="dropdown"
+      style={{
+        position: 'absolute',
+        width: '120px',
+        top: '100%',
+        right: 0,
+        backgroundColor: '#fff',
+        border: '1px solid #ccc',
+        borderRadius: '4px',
+        padding: '6px 8px',
+        zIndex: 999,
+        marginTop: '4px',
+        boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+      }}
+    >
+      <button style={{ padding: '4px 0' }} onClick={onEdit}>
+        ✏️ Edit
+      </button>
+
+      {canUpgrade && (
+        <button style={{ padding: '4px 0' }} onClick={onUpgrade}>
+          ⬆️ Upgrade
+        </button>
+      )}
+
+      {canDowngrade && (
+        <button style={{ padding: '4px 0' }} onClick={onDowngrade}>
+          ⬇️ Downgrade
+        </button>
+      )}
+
+      <button style={{ padding: '4px 0' }} onClick={onDelete}>
+        🗑️ Delete
+      </button>
     </div>
   );
 }
