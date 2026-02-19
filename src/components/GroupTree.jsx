@@ -14,6 +14,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { evaluateCompletion } from './evaluate';
 import { useClickOutside } from '../hooks/useClickOutside';
+import { useBoundHabitTimer } from '../hooks/useBoundHabitTimer';
 
 function GroupTree({
   items,
@@ -45,15 +46,6 @@ function GroupTree({
   const isGroup = item.type === 'group';
   const showDropdown = openDropdownId === item.id;
   const dropdownRef = useRef(null);
-
-  // --- Timer (for unit === 'minutes') ---
-  const [isTiming, setIsTiming] = useState(false);
-  const [elapsedSec, setElapsedSec] = useState(0);
-  const [countdown, setCountdown] = useState(0); // 倒数秒数
-
-  const timerStartRef = useRef(null); // timestamp (ms)
-  const timerIntervalRef = useRef(null);
-  const countdownIntervalRef = useRef(null);
 
   // --- Calculator input ---
   const [showCalculator, setShowCalculator] = useState(false);
@@ -181,92 +173,58 @@ function GroupTree({
   useClickOutside(dropdownRef, () => setOpenDropdownId(null), showDropdown);
   useClickOutside(calculatorRef, handleCalculatorOutside, showCalculator);
 
-  const stopTimerAndCommit = () => {
-    if (timerIntervalRef.current) {
-      clearInterval(timerIntervalRef.current);
-      timerIntervalRef.current = null;
-    }
+  const timer = useBoundHabitTimer({
+    enabled: isMinuteUnit,
+    countdownSeconds: 5,
 
-    if (countdownIntervalRef.current) {
-      clearInterval(countdownIntervalRef.current);
-      countdownIntervalRef.current = null;
-    }
+    getBindTarget: () => ({
+      itemId: item.id,
+      date: selectedDate,
+      isLevelHabit,
+      mainLevelIndex
+    }),
 
-    const secondsToAdd = elapsedSec; // ⭐ 直接用秒
+    getCurrentValueAtTarget: (target) => {
+      const targetItem = items[target.itemId];
+      if (!targetItem) return 0;
 
-    if (secondsToAdd > 0) {
-      const current = Number(getTodayValue()) || 0;
-      setTodayValue(current + secondsToAdd);
-    }
-
-    setElapsedSec(0);
-    setCountdown(0);
-    timerStartRef.current = null;
-    setIsTiming(false);
-  };
-
-  const startCountdown = () => {
-    setCountdown(5);
-    setIsTiming(true); // 设置为计时状态，但实际计时还未开始
-
-    if (countdownIntervalRef.current) {
-      clearInterval(countdownIntervalRef.current);
-    }
-
-    countdownIntervalRef.current = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          // 倒数结束，开始真正的计时
-          const intervalId = countdownIntervalRef.current;
-          if (intervalId) {
-            clearInterval(intervalId);
-            countdownIntervalRef.current = null;
-          }
-          // 开始计时
-          setCountdown(0);
-          setElapsedSec(0);
-          timerStartRef.current = Date.now();
-
-          timerIntervalRef.current = setInterval(() => {
-            const start = timerStartRef.current || Date.now();
-            const diffSec = Math.floor((Date.now() - start) / 1000);
-            setElapsedSec(diffSec);
-          }, 1000);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  };
-
-  const toggleTimer = () => {
-    if (!isMinuteUnit) return;
-
-    if (isTiming) {
-      // 如果正在倒数，取消倒数并停止
-      if (countdown > 0) {
-        if (countdownIntervalRef.current) {
-          clearInterval(countdownIntervalRef.current);
-          countdownIntervalRef.current = null;
-        }
-        setCountdown(0);
-        setIsTiming(false);
-        return;
+      if (target.isLevelHabit) {
+        return targetItem.progressByMainLevel?.[target.mainLevelIndex]?.[target.date] ?? 0;
       }
-      // 如果正在计时，停止并保存
-      stopTimerAndCommit();
-      return;
+      return targetItem.progressByDate?.[target.date] ?? 0;
+    },
+
+    commitValueAtTarget: (target, newValue) => {
+      const targetItem = items[target.itemId];
+      if (!targetItem) return;
+
+      if (target.isLevelHabit) {
+        updateItem({
+          ...targetItem,
+          progressByMainLevel: {
+            ...targetItem.progressByMainLevel,
+            [target.mainLevelIndex]: {
+              ...(targetItem.progressByMainLevel?.[target.mainLevelIndex] || {}),
+              [target.date]: newValue
+            }
+          }
+        });
+      } else {
+        updateItem({
+          ...targetItem,
+          progressByDate: {
+            ...targetItem.progressByDate,
+            [target.date]: newValue
+          }
+        });
+      }
     }
+  });
 
-    // 点击开始，先倒数5秒
-    startCountdown();
-  };
-
-  const formatSec = (sec) => {
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
-    return `${m}:${String(s).padStart(2, '0')}`;
-  };
+  const isTiming = timer.isTiming;
+  const countdown = timer.countdown;
+  const elapsedSec = timer.elapsedSec;
+  const formatSec = timer.formatSec;
 
   const addToValue = (amount) => {
     const current = Number(getTodayValue()) || 0;
@@ -476,7 +434,7 @@ function GroupTree({
           {isMinuteUnit && (
             <button
               type="button"
-              onClick={toggleTimer}
+              onClick={timer.toggleBound}
               title={
                 isTiming
                   ? countdown > 0
@@ -659,24 +617,6 @@ function GroupTree({
       </div>
     );
   };
-
-  useEffect(() => {
-    return () => {
-      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (isTiming || countdown > 0) {
-      if (countdownIntervalRef.current) {
-        clearInterval(countdownIntervalRef.current);
-        countdownIntervalRef.current = null;
-      }
-      stopTimerAndCommit();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [itemId, selectedDate]);
 
   // Auto focus calculator input when opened
   useEffect(() => {
