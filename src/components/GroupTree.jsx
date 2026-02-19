@@ -10,11 +10,14 @@
 //   nested rendering of child items, and progress input handling.
 //   Evaluates completion status via evaluateCompletion() for visual feedback and progress display.
 
-import { useEffect, useRef, useState } from 'react';
+import { useRef } from 'react';
 
 import { evaluateCompletion } from './evaluate';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { useBoundHabitTimer } from '../hooks/useBoundHabitTimer';
+
+import HabitValueCalculator from './HabitValueCalculator';
+import { rawToDisplayString, getInputStep } from '../utils/habitValueAdapter';
 
 function GroupTree({
   items,
@@ -46,12 +49,6 @@ function GroupTree({
   const isGroup = item.type === 'group';
   const showDropdown = openDropdownId === item.id;
   const dropdownRef = useRef(null);
-
-  // --- Calculator input ---
-  const [showCalculator, setShowCalculator] = useState(false);
-  const [calculatorValue, setCalculatorValue] = useState('');
-  const calculatorInputRef = useRef(null);
-  const calculatorRef = useRef(null);
 
   const isMinuteUnit = isHabit && String(item.unit || '').toLowerCase() === 'minutes';
 
@@ -155,23 +152,7 @@ function GroupTree({
     }
   };
 
-  const handleCalculatorOutside = () => {
-    // 行為保持與原本 useEffect 一樣：點外面 = commit（若合法）+ close + clear
-    const num = parseFloat(calculatorValue);
-    if (!isNaN(num) && num >= 0) {
-      if (isMinuteUnit) {
-        const sec = Math.round(num * 60);
-        setTodayValue(sec);
-      } else {
-        setTodayValue(num);
-      }
-    }
-    setShowCalculator(false);
-    setCalculatorValue('');
-  };
-
   useClickOutside(dropdownRef, () => setOpenDropdownId(null), showDropdown);
-  useClickOutside(calculatorRef, handleCalculatorOutside, showCalculator);
 
   const timer = useBoundHabitTimer({
     enabled: isMinuteUnit,
@@ -238,40 +219,6 @@ function GroupTree({
     }
   };
 
-  const openCalculator = () => {
-    const currentValue = getTodayValue();
-    // Set initial value based on unit type
-    if (isMinuteUnit) {
-      setCalculatorValue(
-        currentValue === '' || currentValue === 0 ? '' : (Number(currentValue) / 60).toFixed(1)
-      );
-    } else {
-      setCalculatorValue(currentValue === '' || currentValue === 0 ? '' : String(currentValue));
-    }
-    setShowCalculator(true);
-  };
-
-  const handleCalculatorSubmit = () => {
-    const num = parseFloat(calculatorValue);
-    if (!isNaN(num) && num >= 0) {
-      if (isMinuteUnit) {
-        // Convert minutes to seconds
-        const sec = Math.round(num * 60);
-        setTodayValue(sec);
-      } else {
-        // Use the value directly for non-minute units
-        setTodayValue(num);
-      }
-    }
-    setShowCalculator(false);
-    setCalculatorValue('');
-  };
-
-  const handleCalculatorCancel = () => {
-    setShowCalculator(false);
-    setCalculatorValue('');
-  };
-
   const renderHabitInput = () => {
     const rawValue = isLevelHabit
       ? (item.progressByMainLevel?.[mainLevelIndex]?.[selectedDate] ?? '')
@@ -279,19 +226,13 @@ function GroupTree({
 
     // For minute units, convert seconds to minutes for display
     // For other units, use the raw value directly
-    const displayValue = isMinuteUnit
-      ? rawValue === ''
-        ? ''
-        : (Number(rawValue) / 60).toFixed(1)
-      : rawValue === ''
-        ? ''
-        : String(rawValue);
+    const displayValue = rawToDisplayString(rawValue, isMinuteUnit);
 
     return (
       <input
         type="number"
         min="0"
-        step={isMinuteUnit ? '0.1' : '1'}
+        step={getInputStep(isMinuteUnit)}
         placeholder="0"
         value={displayValue}
         readOnly
@@ -459,104 +400,11 @@ function GroupTree({
             </button>
           )}
           {/* Calculator button and input */}
-          <div style={{ display: 'inline-block', position: 'relative' }} ref={calculatorRef}>
-            {!showCalculator ? (
-              <button
-                type="button"
-                onClick={openCalculator}
-                title="輸入數值 (Input value)"
-                style={{
-                  background: 'none',
-                  border: '1px solid #ccc',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '16px',
-                  padding: '2px 8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'background 0.2s'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.background = '#f0f0f0';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.background = 'none';
-                }}
-              >
-                🧮
-              </button>
-            ) : (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  background: '#fff',
-                  border: '1px solid #4caf50',
-                  borderRadius: '4px',
-                  padding: '2px 4px'
-                }}
-              >
-                <input
-                  ref={calculatorInputRef}
-                  type="number"
-                  min="0"
-                  step={isMinuteUnit ? '0.1' : '1'}
-                  value={calculatorValue}
-                  onChange={(e) => setCalculatorValue(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleCalculatorSubmit();
-                    } else if (e.key === 'Escape') {
-                      e.preventDefault();
-                      handleCalculatorCancel();
-                    }
-                  }}
-                  autoFocus
-                  style={{
-                    width: '60px',
-                    padding: '2px 4px',
-                    border: 'none',
-                    outline: 'none',
-                    fontSize: '13px',
-                    textAlign: 'center'
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={handleCalculatorSubmit}
-                  style={{
-                    background: '#4caf50',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '3px',
-                    padding: '2px 6px',
-                    cursor: 'pointer',
-                    fontSize: '11px'
-                  }}
-                >
-                  ✓
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCalculatorCancel}
-                  style={{
-                    background: '#f44336',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '3px',
-                    padding: '2px 6px',
-                    cursor: 'pointer',
-                    fontSize: '11px'
-                  }}
-                >
-                  ✕
-                </button>
-              </div>
-            )}
-          </div>
+          <HabitValueCalculator
+            isMinuteUnit={isMinuteUnit}
+            rawValue={getTodayValue()}
+            commitRawValue={setTodayValue}
+          />
         </div>
 
         {isLevelHabit && (
@@ -617,14 +465,6 @@ function GroupTree({
       </div>
     );
   };
-
-  // Auto focus calculator input when opened
-  useEffect(() => {
-    if (showCalculator && calculatorInputRef.current) {
-      calculatorInputRef.current.focus();
-      calculatorInputRef.current.select();
-    }
-  }, [showCalculator]);
 
   return (
     <div
