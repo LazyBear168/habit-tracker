@@ -6,7 +6,7 @@
 //   based on evaluated habit data. Users can navigate between weeks.
 //   Designed to visualize daily progress and encourage consistency.
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, Fragment } from 'react';
 import { evaluateCompletion } from '../components/evaluate';
 import { GoCheckCircle } from 'react-icons/go';
 import { RxCross2 } from 'react-icons/rx';
@@ -70,8 +70,8 @@ export default function CalendarView({ items }) {
         </thead>
         <tbody>
           {topLevelItems.map((item) => (
-            <>
-              <tr key={item.id} style={{ backgroundColor: '#e0f7fa', fontWeight: 'bold' }}>
+            <Fragment key={item.id}>
+              <tr style={{ backgroundColor: '#e0f7fa', fontWeight: 'bold' }}>
                 <td style={{ padding: '8px' }}>{item.name}</td>
                 {weekDates.map((date) => {
                   const { completed } = evaluateCompletion(items, item.id, date);
@@ -89,6 +89,7 @@ export default function CalendarView({ items }) {
 
               {item.children?.map((childId) => {
                 const child = items[childId];
+                if (!child) return null;
                 return (
                   <tr key={childId}>
                     <td style={{ padding: '8px', paddingLeft: '24px' }}>↳ {child.name}</td>
@@ -107,7 +108,7 @@ export default function CalendarView({ items }) {
                   </tr>
                 );
               })}
-            </>
+            </Fragment>
           ))}
         </tbody>
       </table>

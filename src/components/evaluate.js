@@ -14,9 +14,27 @@ const toProgressUnit = (item, value) => {
   return isMinutesUnit(item) ? n * 60 : n;
 };
 
-export function evaluateCompletion(items, id, selectedDate) {
+export function evaluateCompletion(items, id, selectedDate, visited = new Set()) {
   const item = items[id];
   if (!item) return { completed: false, count: 0, totalCount: 0 };
+
+  // 防止循環：A -> B -> A
+  if (visited.has(id)) {
+    // 回傳安全值，避免整棵樹 render 爆掉
+    return {
+      completed: false,
+      count: 0,
+      totalCount: 0,
+      totalChildren: item.type === 'group' ? (item.children?.length || 0) : 0,
+      nextLevelTotal: 0,
+      level: 0,
+      requiredTarget: item.type === 'group' ? Number(item.targetCount ?? 0) : 0
+    };
+  }
+
+  const nextVisited = new Set(visited);
+  nextVisited.add(id);
+
 
 
 // ------------------------------------------------------------
@@ -24,12 +42,10 @@ export function evaluateCompletion(items, id, selectedDate) {
   // ------------------------------------------------------------
   if (item.type === 'group' && item.levelEnabled) {
     const children = item.children || [];
-
-    // 先拿到每個 child 的評估結果（遞迴）
     const childStats = children
-      .map((childId) => evaluateCompletion(items, childId, selectedDate))
-      // 避免空/undefined
+      .map((childId) => evaluateCompletion(items, childId, selectedDate, nextVisited))
       .filter(Boolean);
+
 
     // child 的「進度比值」：能算就用 totalCount/nextLevelTotal，不能算就用 completed 轉 0/1
     const ratios = childStats.map((s) => {
@@ -162,10 +178,12 @@ export function evaluateCompletion(items, id, selectedDate) {
 
   // GROUP
   if (item.type === 'group') {
-    const results = item.children.map((childId) => evaluateCompletion(items, childId, selectedDate));
-    const count = results.filter((r) => r.completed).length;
-    const totalChildren = results.length;
-    const completed = count >= (item.targetCount || 0);
+    const results = (item.children || []).map((childId) =>
+    evaluateCompletion(items, childId, selectedDate, nextVisited)
+  );
+  const count = results.filter((r) => r.completed).length;
+  const totalChildren = results.length;
+  const completed = count >= (item.targetCount || 0);
 
     return {
       completed,

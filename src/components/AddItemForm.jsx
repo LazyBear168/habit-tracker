@@ -20,9 +20,39 @@ const UNIT_OPTIONS = [
   'pages',
   'kcal',
   'cups',
-  'sets',
-  'reps'
+  'sets'
 ];
+
+function wouldCreateCycle(items, parentId, nextChildren) {
+  // DFS: from each child, walk down group children.
+  // If we can reach parentId, then cycle exists.
+  const stack = [...(nextChildren || [])];
+  const visited = new Set();
+
+  while (stack.length) {
+    const cur = stack.pop();
+    if (!cur) continue;
+    if (cur === parentId) return true;
+    if (visited.has(cur)) continue;
+    visited.add(cur);
+
+    const node = items[cur];
+    if (node?.type === 'group' && Array.isArray(node.children)) {
+      stack.push(...node.children);
+    }
+  }
+  return false;
+}
+
+function findOtherParentGroup(items, childId, selfGroupId) {
+  return Object.values(items).find(
+    (g) =>
+      g.type === 'group' &&
+      g.id !== selfGroupId &&
+      Array.isArray(g.children) &&
+      g.children.includes(childId)
+  );
+}
 
 function AddItemForm({ items, updateItem, editItem = null, onClose }) {
   const isEdit = !!editItem;
@@ -33,6 +63,7 @@ function AddItemForm({ items, updateItem, editItem = null, onClose }) {
   const [name, setName] = useState(editItem?.name || '');
   const [unit, setUnit] = useState(editItem?.unit || '');
   const [dailyGoal, setDailyGoal] = useState(editItem?.dailyGoal || '');
+  const [isDaily, setIsDaily] = useState(editItem?.isDaily ?? true);
   const [startDate, setStartDate] = useState(editItem?.startDate || '');
   const [endDate, setEndDate] = useState(editItem?.endDate || '');
   const [levelEnabled, setLevelEnabled] = useState(editItem?.levelEnabled || false);
@@ -50,6 +81,30 @@ function AddItemForm({ items, updateItem, editItem = null, onClose }) {
     );
     return foundGroup?.id || '';
   });
+
+  // Only enforce "single parent group" rule if you want.
+  // If false: allow an item to be in multiple groups.
+  const ENFORCE_SINGLE_PARENT_GROUP = true;
+
+  const selectableChildren = Object.values(items)
+    .filter((i) => i.id !== formId) // prevent self
+    .map((it) => {
+      // Cycle check: if we add "it.id" into this group's children, would it create a cycle?
+      const wouldCycle = it.type === 'group' && wouldCreateCycle(items, formId, [it.id]);
+
+      // Single-parent check: is it already inside another group?
+      const otherParent = ENFORCE_SINGLE_PARENT_GROUP
+        ? findOtherParentGroup(items, it.id, formId)
+        : null;
+
+      const disabled = wouldCycle || !!otherParent;
+
+      let reason = '';
+      if (wouldCycle) reason = 'cycle';
+      else if (otherParent) reason = `already in "${otherParent.name}"`;
+
+      return { it, disabled, reason };
+    });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -83,14 +138,34 @@ function AddItemForm({ items, updateItem, editItem = null, onClose }) {
           .filter(Boolean);
       }
     } else if (type === 'group') {
-      newItem.children = children;
-      newItem.targetCount = Number(targetCount);
-      if (levelEnabled) {
-        newItem.levelStrategy = levelStrategy;
+      const uniqueChildren = Array.from(new Set(children || []));
+      const sanitizedChildren = uniqueChildren.filter((cid) => cid && cid !== formId);
+
+      // Prevent cycles (A -> ... -> A)
+      if (wouldCreateCycle(items, formId, sanitizedChildren)) {
+        alert('Invalid selection: this would create a circular group reference.');
+        return;
       }
+
+      // Optional: enforce single parent group
+      if (ENFORCE_SINGLE_PARENT_GROUP) {
+        for (const cid of sanitizedChildren) {
+          const other = findOtherParentGroup(items, cid, formId);
+          if (other) {
+            alert(
+              `"${items[cid]?.name || cid}" is already in group "${other.name}". Remove it first.`
+            );
+            return;
+          }
+        }
+      }
+
+      newItem.children = sanitizedChildren;
+      newItem.targetCount = Number(targetCount);
+      if (levelEnabled) newItem.levelStrategy = levelStrategy;
     }
 
-    await updateItem(newItem);
+    updateItem(newItem, { immediate: true });
     onClose?.();
     // reset
     if (!isEdit) {
@@ -139,7 +214,7 @@ function AddItemForm({ items, updateItem, editItem = null, onClose }) {
               style={{ marginLeft: '10px' }}
             >
               <option value="">(Select unit)</option>
-              {UNIT_OPTIONS.map((u) => (
+              {Array.from(new Set(UNIT_OPTIONS)).map((u) => (
                 <option key={u} value={u}>
                   {u}
                 </option>
@@ -201,13 +276,11 @@ function AddItemForm({ items, updateItem, editItem = null, onClose }) {
                 setChildren(selected);
               }}
             >
-              {Object.values(items)
-                .filter((i) => i.id !== name) // Prevent self-referencing
-                .map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name} ({item.type})
-                  </option>
-                ))}
+              {selectableChildren.map(({ it, disabled, reason }) => (
+                <option key={it.id} value={it.id} disabled={disabled}>
+                  {it.name} ({it.type}){disabled ? ` — ⚠️ ${reason}` : ''}
+                </option>
+              ))}
             </select>
           </label>
           <br />

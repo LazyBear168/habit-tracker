@@ -1,6 +1,7 @@
 {
   "projects": {
-    "default": "sunny-habit-app"
+    "default": "sunny-habit-app",
+    "prod": "habits-up"
   },
   "targets": {
     "sunny-habit-app": {
