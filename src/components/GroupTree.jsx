@@ -186,10 +186,32 @@ function GroupTree({
 
     const progressPercent =
       nextLevelTotal > 0 ? Math.min(100, Math.floor((totalCount / nextLevelTotal) * 100)) : 0;
+    // NEW: group daily completion percent (today)
     const status = completed ? '✅' : '☑️';
+    const todayNum = Number(displayValue) || 0; // 用 displayValue：minutes 單位一致
+    const targetNum = Number(requiredTarget) || 0;
+    const dayProgressPercent =
+      targetNum > 0 ? Math.min(100, Math.floor((todayNum / targetNum) * 100)) : 0;
 
     return (
-      <div style={{ position: 'relative', marginBottom: '8px' }}>
+      <div
+        style={{
+          position: 'relative',
+          marginBottom: '8px',
+          padding: '6px 8px',
+          borderRadius: '8px',
+
+          // NEW: background as progress fill
+          background: `linear-gradient(
+      90deg,
+      ${completed ? '#c8e6c9' : '#d9f2dc'} 0%,
+      ${completed ? '#c8e6c9' : '#d9f2dc'} ${dayProgressPercent}%,
+      #eef7ee ${dayProgressPercent}%,
+      #eef7ee 100%
+    )`,
+          transition: 'background 0.25s'
+        }}
+      >
         {/* First row: Status + Label + Input + Unit, Timer, Calculator, Dropdown */}
         <div
           style={{
@@ -336,8 +358,28 @@ function GroupTree({
     const progressPercent =
       nextLevelTotal > 0 ? Math.min(100, Math.floor((totalCount / nextLevelTotal) * 100)) : 0;
 
+    const requiredCount = Number(item.targetCount ?? totalChildren ?? 0);
+    const safeTarget = Math.max(1, requiredCount); // 避免除以 0
+    const groupDayPercent = Math.min(100, Math.floor((count / safeTarget) * 100));
+
     return (
-      <div style={{ marginBottom: '8px' }}>
+      <div
+        style={{
+          marginBottom: '8px',
+          padding: '6px 8px',
+          borderRadius: '8px',
+
+          // NEW: background as progress fill (same concept as Habit)
+          background: `linear-gradient(
+      90deg,
+      ${completed ? '#c8e6c9' : '#d9f2dc'} 0%,
+      ${completed ? '#c8e6c9' : '#d9f2dc'} ${groupDayPercent}%,
+      #eef7ee ${groupDayPercent}%,
+      #eef7ee 100%
+    )`,
+          transition: 'background 0.25s'
+        }}
+      >
         <div
           style={{
             display: 'flex',
@@ -349,7 +391,7 @@ function GroupTree({
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
             <span>{completed ? '✅' : '☑️'}</span>
             <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {item.name} ({count}/{totalChildren} required)
+              {item.name} ({count}/{requiredCount} required)
             </span>
             <span style={{ fontSize: '12px', color: '#666' }}>LV{level}</span>
           </div>
