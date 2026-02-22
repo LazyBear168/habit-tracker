@@ -32,6 +32,7 @@ function makeProgressBg({ percent, completed }) {
 }
 
 function GroupTree({
+  userId,
   items,
   itemId,
   selectedDate,
@@ -100,6 +101,7 @@ function GroupTree({
       )}
       {isHabit && (
         <HabitRow
+          userId={userId}
           item={item}
           items={items}
           selectedDate={selectedDate}
@@ -123,6 +125,7 @@ function GroupTree({
         item.children.map((childId) => (
           <GroupTree
             key={childId}
+            userId={userId}
             items={items}
             itemId={childId}
             selectedDate={selectedDate}

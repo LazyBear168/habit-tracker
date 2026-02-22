@@ -269,6 +269,7 @@ export default function MainView({
         {visibleItems.map((item) => (
           <GroupTree
             key={item.id}
+            userId={userId}
             items={items}
             itemId={item.id}
             selectedDate={selectedDate}

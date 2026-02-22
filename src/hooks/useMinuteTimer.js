@@ -1,25 +1,17 @@
-// File: src/hooks/useMinuteTimer.js
-// Author: Cheng (refactor assisted)
-// Description:
-//   A reusable minute-timer hook with optional countdown.
-//   - Countdown defaults to 5 seconds (same as your current behavior)
-//   - Elapsed time is tracked in seconds
-//   - Provides start/cancel/stopAndCommit/toggle and a formatSec helper
-//
-// Notes:
-//   This hook DOES NOT write to your habit data directly.
-//   You pass in onCommitSeconds(seconds) to decide how to persist.
-
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 export function useMinuteTimer({ enabled = true, countdownSeconds = 5, onCommitSeconds }) {
-  const [isTiming, setIsTiming] = useState(false); // includes countdown or timing
-  const [countdown, setCountdown] = useState(0); // remaining countdown seconds
-  const [elapsedSec, setElapsedSec] = useState(0); // timing seconds after countdown
+  const [isTiming, setIsTiming] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  const [elapsedSec, setElapsedSec] = useState(0);
 
-  const timerStartRef = useRef(null); // Date.now() ms
+  const timerStartRef = useRef(null);
   const timerIntervalRef = useRef(null);
   const countdownIntervalRef = useRef(null);
+
+  // ✅ NEW: immediate state refs (avoid React state lag)
+  const isTimingRef = useRef(false);
+  const countdownRef = useRef(0);
 
   const clearIntervals = useCallback(() => {
     if (timerIntervalRef.current) {
@@ -33,6 +25,8 @@ export function useMinuteTimer({ enabled = true, countdownSeconds = 5, onCommitS
   }, []);
 
   const resetState = useCallback(() => {
+    isTimingRef.current = false;       // ✅
+    countdownRef.current = 0;          // ✅
     setIsTiming(false);
     setCountdown(0);
     setElapsedSec(0);
@@ -40,13 +34,11 @@ export function useMinuteTimer({ enabled = true, countdownSeconds = 5, onCommitS
   }, []);
 
   const cancel = useCallback(() => {
-    // stop without commit
     clearIntervals();
     resetState();
   }, [clearIntervals, resetState]);
 
   const stopAndCommit = useCallback(() => {
-    // stop and commit elapsedSec
     clearIntervals();
 
     const secondsToAdd = elapsedSec;
@@ -61,56 +53,67 @@ export function useMinuteTimer({ enabled = true, countdownSeconds = 5, onCommitS
   const start = useCallback(() => {
     if (!enabled) return;
 
-    // fresh start
+    // ✅ 防止「狂按」造成一直重啟倒數 / 疊 timer
+    if (isTimingRef.current || timerIntervalRef.current || countdownIntervalRef.current) return;
+
     clearIntervals();
     setElapsedSec(0);
+
+    isTimingRef.current = true;        // ✅ immediate
     setIsTiming(true);
+
+    countdownRef.current = countdownSeconds;   // ✅ immediate
     setCountdown(countdownSeconds);
 
     countdownIntervalRef.current = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          // countdown ends -> start actual timing
-          if (countdownIntervalRef.current) {
-            clearInterval(countdownIntervalRef.current);
-            countdownIntervalRef.current = null;
-          }
+      // 用 ref 做判斷，比 state 穩
+      const prev = countdownRef.current;
 
-          setCountdown(0);
-          setElapsedSec(0);
-          timerStartRef.current = Date.now();
-
-          timerIntervalRef.current = setInterval(() => {
-            const startMs = timerStartRef.current || Date.now();
-            const diff = Math.floor((Date.now() - startMs) / 1000);
-            setElapsedSec(diff);
-          }, 1000);
-
-          return 0;
+      if (prev <= 1) {
+        // countdown ends -> start actual timing
+        if (countdownIntervalRef.current) {
+          clearInterval(countdownIntervalRef.current);
+          countdownIntervalRef.current = null;
         }
 
-        return prev - 1;
-      });
+        countdownRef.current = 0;
+        setCountdown(0);
+
+        setElapsedSec(0);
+        timerStartRef.current = Date.now();
+
+        timerIntervalRef.current = setInterval(() => {
+          const startMs = timerStartRef.current || Date.now();
+          const diff = Math.floor((Date.now() - startMs) / 1000);
+          setElapsedSec(diff);
+        }, 1000);
+
+        return;
+      }
+
+      countdownRef.current = prev - 1;
+      setCountdown(countdownRef.current);
     }, 1000);
   }, [enabled, countdownSeconds, clearIntervals]);
 
   const toggle = useCallback(() => {
     if (!enabled) return;
 
-    if (!isTiming) {
+    // ✅ 用 ref 判斷，避免第一次按完 state 還沒更新
+    if (!isTimingRef.current) {
       start();
       return;
     }
 
-    // if in countdown -> toggle means cancel (same as your current behavior)
-    if (countdown > 0) {
+    // countdown -> cancel
+    if (countdownRef.current > 0) {
       cancel();
       return;
     }
 
-    // if timing -> stop & commit
+    // timing -> stop & commit
     stopAndCommit();
-  }, [enabled, isTiming, countdown, start, cancel, stopAndCommit]);
+  }, [enabled, start, cancel, stopAndCommit]);
 
   const formatSec = useCallback((sec) => {
     const m = Math.floor(sec / 60);
@@ -118,21 +121,7 @@ export function useMinuteTimer({ enabled = true, countdownSeconds = 5, onCommitS
     return `${m}:${String(s).padStart(2, '0')}`;
   }, []);
 
-  // cleanup on unmount
-  useEffect(() => {
-    return () => {
-      clearIntervals();
-    };
-  }, [clearIntervals]);
+  useEffect(() => () => clearIntervals(), [clearIntervals]);
 
-  return {
-    isTiming,
-    countdown,
-    elapsedSec,
-    start,
-    cancel,
-    stopAndCommit,
-    toggle,
-    formatSec
-  };
+  return { isTiming, countdown, elapsedSec, start, cancel, stopAndCommit, toggle, formatSec };
 }

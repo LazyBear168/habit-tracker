@@ -12,7 +12,7 @@
 
 import { useRef, useState } from 'react';
 import { useClickOutside } from '../hooks/useClickOutside';
-import { useBoundHabitTimer } from '../hooks/useBoundHabitTimer';
+import { useSyncedBoundHabitTimer } from '../hooks/useSyncedBoundHabitTimer';
 import { useHabitValue } from '../hooks/useHabitValue';
 import { useHabitValueAtTarget } from '../hooks/useHabitValueAtTarget';
 import HabitValueCalculator from './HabitValueCalculator';
@@ -111,6 +111,7 @@ function DropdownMenu({
 }
 
 export default function HabitRow({
+  userId,
   item,
   items,
   selectedDate,
@@ -149,18 +150,19 @@ export default function HabitRow({
   useClickOutside(dropdownRef, () => setOpenDropdownId(null), showDropdown);
 
   const habitValueAtTarget = useHabitValueAtTarget({ items, updateItem });
-  const timer = useBoundHabitTimer({
-    enabled: isMinuteUnit,
-    countdownSeconds: 5,
-    getBindTarget: () => ({
-      itemId: item.id,
-      date: selectedDate,
-      isLevelHabit,
-      mainLevelIndex
-    }),
-    getCurrentValueAtTarget: habitValueAtTarget.getRawValueAtTarget,
-    commitValueAtTarget: habitValueAtTarget.setRawValueAtTarget
-  });
+  const timer = useSyncedBoundHabitTimer({
+  enabled: isMinuteUnit,
+  userId,
+  countdownSeconds: 5,
+  getBindTarget: () => ({
+    itemId: item.id,
+    date: selectedDate,
+    isLevelHabit,
+    mainLevelIndex
+  }),
+  getCurrentValueAtTarget: habitValueAtTarget.getRawValueAtTarget,
+  commitValueAtTarget: habitValueAtTarget.setRawValueAtTarget
+});
 
   const label = isLevelHabit ? item.mainLevels?.[mainLevelIndex] || item.name : item.name;
   const status = completed ? '✅' : '☑️';
