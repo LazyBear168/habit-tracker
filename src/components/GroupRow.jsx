@@ -1,5 +1,38 @@
 // File: src/components/GroupRow.jsx
-// Description: UI row for a group item (collapse + progress background + optional level bar)
+// Description: UI row for a group item (collapse + progress background + optional level bar + dropdown)
+
+import { useRef } from 'react';
+import { useClickOutside } from '../hooks/useClickOutside';
+
+function DropdownMenu({ dropdownRef, onEdit, onDelete }) {
+  return (
+    <div
+      ref={dropdownRef}
+      className="dropdown"
+      style={{
+        position: 'absolute',
+        width: '120px',
+        top: '100%',
+        right: 0,
+        backgroundColor: '#fff',
+        border: '1px solid #ccc',
+        borderRadius: '4px',
+        padding: '6px 8px',
+        zIndex: 999,
+        marginTop: '4px',
+        boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+      }}
+    >
+      <button style={{ padding: '4px 0' }} onClick={onEdit}>
+        ✏️ Edit
+      </button>
+
+      <button style={{ padding: '4px 0' }} onClick={onDelete}>
+        🗑️ Delete
+      </button>
+    </div>
+  );
+}
 
 export default function GroupRow({
   item,
@@ -13,14 +46,26 @@ export default function GroupRow({
   // group state
   isCollapsed,
   isLevelGroup,
-  onToggleCollapse
+  onToggleCollapse,
+
+  // dropdown control (from parent like GroupTree)
+  openDropdownId,
+  setOpenDropdownId,
+  onEdit,
+  onDelete
 }) {
+  const showDropdown = openDropdownId === item.id;
+  const dropdownRef = useRef(null);
+
+  useClickOutside(dropdownRef, () => setOpenDropdownId(null), showDropdown);
+
   const progressPercent =
     nextLevelTotal > 0 ? Math.min(100, Math.floor((totalCount / nextLevelTotal) * 100)) : 0;
 
   const requiredCount = Number(item.targetCount ?? totalChildren ?? 0);
   const safeTarget = Math.max(1, requiredCount);
   const groupDayPercent = Math.min(100, Math.floor((count / safeTarget) * 100));
+
   const bg = isCollapsed
     ? `linear-gradient(
       90deg,
@@ -31,9 +76,22 @@ export default function GroupRow({
     )`
     : '#eef7ee'; // 展開時：不要背景進度，只給底色
 
+  const closeDropdown = () => setOpenDropdownId(null);
+
+  const handleEdit = () => {
+    onEdit?.();
+    closeDropdown();
+  };
+
+  const handleDelete = () => {
+    onDelete?.();
+    closeDropdown();
+  };
+
   return (
     <div
       style={{
+        position: 'relative',
         marginBottom: '8px',
         padding: '6px 8px',
         borderRadius: '8px',
@@ -57,6 +115,7 @@ export default function GroupRow({
           <span style={{ fontSize: '12px', color: '#666' }}>LV{level}</span>
         </div>
 
+        {/* Right controls: collapse + dropdown */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
           <button
             type="button"
@@ -74,6 +133,30 @@ export default function GroupRow({
           >
             ▾
           </button>
+
+          <div style={{ display: 'inline-block', position: 'relative' }}>
+            <button
+              type="button"
+              onClick={() => setOpenDropdownId(showDropdown ? null : item.id)}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '16px',
+                padding: '2px 6px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              title="Menu"
+            >
+              ⋮
+            </button>
+
+            {showDropdown && (
+              <DropdownMenu dropdownRef={dropdownRef} onEdit={handleEdit} onDelete={handleDelete} />
+            )}
+          </div>
         </div>
       </div>
 

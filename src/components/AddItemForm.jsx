@@ -22,6 +22,40 @@ const UNIT_OPTIONS = [
   'cups',
   'sets'
 ];
+const FREQUENCY_OPTIONS = [
+  { label: 'None', value: 'none' },
+  { label: 'Daily', value: 'daily' },
+  { label: 'Weekly', value: 'weekly' },
+  { label: 'Monthly', value: 'monthly' },
+  { label: 'Yearly', value: 'yearly' },
+  { label: 'Life goals', value: 'life' }
+];
+
+const GOAL_FIELD_BY_FREQUENCY = {
+  none: null,
+  daily: 'dailyGoal',
+  weekly: 'weeklyGoal',
+  monthly: 'monthlyGoal',
+  yearly: 'yearlyGoal',
+  life: 'lifeGoal'
+};
+
+function getGoalValueByFrequency(item, frequency) {
+  const field = GOAL_FIELD_BY_FREQUENCY[frequency];
+  if (!field) return ''; // none or unknown
+  const v = item?.[field];
+  return v === null || v === undefined ? '' : String(v);
+}
+
+function applyGoalToItemByFrequency(item, frequency, goalStr) {
+  const field = GOAL_FIELD_BY_FREQUENCY[frequency];
+  if (!field) return item; // none: do nothing
+
+  const parsed = Number(goalStr);
+  const goalNum = goalStr === '' || Number.isNaN(parsed) ? null : parsed;
+
+  return { ...item, [field]: goalNum };
+}
 
 function wouldCreateCycle(items, parentId, nextChildren) {
   // DFS: from each child, walk down group children.
@@ -54,6 +88,12 @@ function findOtherParentGroup(items, childId, selfGroupId) {
   );
 }
 
+function findParentGroup(items, childId) {
+  return Object.values(items).find(
+    (g) => g.type === 'group' && Array.isArray(g.children) && g.children.includes(childId)
+  );
+}
+
 function AddItemForm({ items, updateItem, editItem = null, onClose }) {
   const isEdit = !!editItem;
 
@@ -62,8 +102,15 @@ function AddItemForm({ items, updateItem, editItem = null, onClose }) {
 
   const [name, setName] = useState(editItem?.name || '');
   const [unit, setUnit] = useState(editItem?.unit || '');
-  const [dailyGoal, setDailyGoal] = useState(editItem?.dailyGoal || '');
-  const [isDaily, setIsDaily] = useState(editItem?.isDaily ?? true);
+  const [frequency, setFrequency] = useState(editItem?.frequency ?? 'daily');
+  const [goalDraftByFreq, setGoalDraftByFreq] = useState(() => ({
+    daily: getGoalValueByFrequency(editItem, 'daily'),
+    weekly: getGoalValueByFrequency(editItem, 'weekly'),
+    monthly: getGoalValueByFrequency(editItem, 'monthly'),
+    yearly: getGoalValueByFrequency(editItem, 'yearly'),
+    life: getGoalValueByFrequency(editItem, 'life')
+  }));
+  const goal = goalDraftByFreq[frequency] ?? '';
   const [startDate, setStartDate] = useState(editItem?.startDate || '');
   const [endDate, setEndDate] = useState(editItem?.endDate || '');
   const [levelEnabled, setLevelEnabled] = useState(editItem?.levelEnabled || false);
@@ -118,7 +165,29 @@ function AddItemForm({ items, updateItem, editItem = null, onClose }) {
     };
     if (type === 'habit') {
       newItem.unit = unit;
-      newItem.dailyGoal = Number(dailyGoal);
+      newItem.frequency = frequency;
+
+      // ✅ 確保目標欄位都存在（新建時）
+      if (!isEdit) {
+        newItem.dailyGoal = null;
+        newItem.weeklyGoal = null;
+        newItem.monthlyGoal = null;
+        newItem.yearlyGoal = null;
+        newItem.lifeGoal = null;
+      }
+
+      // ✅ 把所有頻率的草稿值寫回 Firebase schema（UI 切換只是改顯示）
+      Object.assign(newItem, applyGoalToItemByFrequency(newItem, 'daily', goalDraftByFreq.daily));
+      Object.assign(newItem, applyGoalToItemByFrequency(newItem, 'weekly', goalDraftByFreq.weekly));
+      Object.assign(
+        newItem,
+        applyGoalToItemByFrequency(newItem, 'monthly', goalDraftByFreq.monthly)
+      );
+      Object.assign(newItem, applyGoalToItemByFrequency(newItem, 'yearly', goalDraftByFreq.yearly));
+      Object.assign(newItem, applyGoalToItemByFrequency(newItem, 'life', goalDraftByFreq.life));
+
+      // ✅ backward compatibility：舊 evaluate 只看 dailyGoal
+      if (newItem.dailyGoal == null) newItem.dailyGoal = 0;
       newItem.startDate = startDate;
       newItem.endDate = endDate || null;
 
@@ -136,6 +205,31 @@ function AddItemForm({ items, updateItem, editItem = null, onClose }) {
           .split(',')
           .map((l) => l.trim())
           .filter(Boolean);
+      }
+      // ====== Apply "parentGroup" selection into group.children ======
+      // current parent group (from items, source of truth)
+      const currentParent = findParentGroup(items, formId);
+      const currentParentId = currentParent?.id || '';
+
+      const nextParentId = parentGroup || '';
+
+      // If parent changed: remove from old group, add to new group
+      if (currentParentId !== nextParentId) {
+        // remove from old group
+        if (currentParentId) {
+          const oldGroup = items[currentParentId];
+          const nextOldChildren = (oldGroup?.children || []).filter((cid) => cid !== formId);
+          updateItem({ ...oldGroup, children: nextOldChildren }, { immediate: true });
+        }
+
+        // add to new group
+        if (nextParentId) {
+          const newGroup = items[nextParentId];
+          if (newGroup?.type === 'group') {
+            const nextNewChildren = Array.from(new Set([...(newGroup.children || []), formId]));
+            updateItem({ ...newGroup, children: nextNewChildren }, { immediate: true });
+          }
+        }
       }
     } else if (type === 'group') {
       const uniqueChildren = Array.from(new Set(children || []));
@@ -168,16 +262,19 @@ function AddItemForm({ items, updateItem, editItem = null, onClose }) {
     updateItem(newItem, { immediate: true });
     onClose?.();
     // reset
+    setParentGroup('');
     if (!isEdit) {
       setFormId(uuidv4()); // 🟢 Reset for next new item
     }
     setName('');
     setUnit('');
-    setDailyGoal('');
+    setGoalDraftByFreq({ daily: '', weekly: '', monthly: '', yearly: '', life: '' });
+    setFrequency('daily'); // 或你想預設 'none'
     setStartDate('');
     setEndDate('');
     setLevelEnabled(false);
     setLevelThreshold('');
+    setLevelMultiplier('');
     setMainLevels('');
     setChildren([]);
     setTargetCount(1);
@@ -185,7 +282,9 @@ function AddItemForm({ items, updateItem, editItem = null, onClose }) {
 
   return (
     <form onSubmit={handleSubmit} style={{ marginBottom: '20px' }}>
-      <h3>Add New {type === 'habit' ? 'Habit' : 'Group'}</h3>
+      <h3>
+        {isEdit ? 'Edit' : 'Add New'} {type === 'habit' ? 'Habit' : 'Group'}
+      </h3>
       <label>
         Type:
         <select
@@ -224,11 +323,34 @@ function AddItemForm({ items, updateItem, editItem = null, onClose }) {
 
           <br />
           <label>
-            Daily Goal:{' '}
+            Frequency:
+            <select
+              value={frequency}
+              onChange={(e) => {
+                const next = e.target.value;
+                setFrequency(next);
+              }}
+              style={{ marginLeft: '10px', marginRight: '10px' }}
+            >
+              {FREQUENCY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            Goal:
             <input
               type="number"
-              value={dailyGoal}
-              onChange={(e) => setDailyGoal(Number(e.target.value))}
+              value={goal}
+              disabled={frequency === 'none'}
+              onChange={(e) => {
+                if (frequency === 'none') return;
+                const v = e.target.value;
+                setGoalDraftByFreq((prev) => ({ ...prev, [frequency]: v }));
+              }}
             />
           </label>
           <br />
